@@ -16,14 +16,7 @@ import {
 import { DateCalendar } from '@mui/x-date-pickers/DateCalendar';
 import { format, startOfDay, endOfDay, isSameDay } from 'date-fns';
 import { PickersDay, PickersDayProps } from '@mui/x-date-pickers/PickersDay';
-
-interface StudySession {
-  id: string;
-  subject: string;
-  duration: number;
-  startTime: Date;
-  isBreak: boolean;
-}
+import { User, StudySession } from '../types';
 
 const subjectColors: { [key: string]: string } = {
   'General Studies': '#2E7D32',
@@ -33,7 +26,11 @@ const subjectColors: { [key: string]: string } = {
   'Break': '#757575'
 };
 
-const Calendar: React.FC = () => {
+interface CalendarProps {
+  currentUser: User | null;
+}
+
+const Calendar: React.FC<CalendarProps> = ({ currentUser }) => {
   const [sessions, setSessions] = useState<StudySession[]>([]);
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [selectedSubject, setSelectedSubject] = useState<string>('all');

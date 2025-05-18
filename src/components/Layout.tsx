@@ -1,5 +1,18 @@
 import React, { useState } from 'react';
-import { Box, Drawer, List, ListItem, ListItemIcon, ListItemText, Typography, IconButton, useTheme, useMediaQuery } from '@mui/material';
+import {
+  Box,
+  Drawer,
+  List,
+  ListItem,
+  ListItemIcon,
+  ListItemText,
+  Typography,
+  IconButton,
+  useTheme,
+  useMediaQuery,
+  Avatar,
+  Divider,
+} from '@mui/material';
 import { styled } from '@mui/material/styles';
 import {
   Dashboard as DashboardIcon,
@@ -9,8 +22,24 @@ import {
   ChevronLeft as ChevronLeftIcon,
   ChevronRight as ChevronRightIcon,
   CalendarMonth as CalendarIcon,
+  Assignment as AssignmentIcon,
+  Settings as SettingsIcon,
 } from '@mui/icons-material';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, Routes, Route } from 'react-router-dom';
+import Dashboard from '../pages/Dashboard';
+import StudyTimer from '../pages/StudyTimer';
+import SyllabusTracker from '../pages/SyllabusTracker';
+import Calendar from '../pages/Calendar';
+import Settings from '../pages/Settings';
+
+interface LayoutProps {
+  currentUser: {
+    id: string;
+    email: string;
+    role: string;
+  } | null;
+  children?: React.ReactNode;
+}
 
 const drawerWidth = 240;
 const collapsedDrawerWidth = 65;
@@ -35,11 +64,12 @@ const StyledDrawer = styled(Drawer)(({ theme, open }) => ({
 const menuItems = [
   { text: 'Dashboard', icon: <DashboardIcon />, path: '/' },
   { text: 'Study Timer', icon: <TimerIcon />, path: '/study-timer' },
-  { text: 'Syllabus Tracker', icon: <BookIcon />, path: '/syllabus' },
+  { text: 'Syllabus Tracker', icon: <AssignmentIcon />, path: '/syllabus' },
   { text: 'Calendar', icon: <CalendarIcon />, path: '/calendar' },
+  { text: 'Settings', icon: <SettingsIcon />, path: '/settings' },
 ];
 
-const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+const Layout: React.FC<LayoutProps> = ({ currentUser, children }) => {
   const [open, setOpen] = useState(true);
   const navigate = useNavigate();
   const location = useLocation();

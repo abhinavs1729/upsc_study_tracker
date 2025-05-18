@@ -380,22 +380,18 @@ const App: React.FC = () => {
       <LocalizationProvider dateAdapter={AdapterDateFns}>
         <CssBaseline />
         <Router>
-          <Layout>
+          <Layout currentUser={currentUser}>
             {isOffline && (
               <Alert severity="warning" sx={{ mb: 2 }}>
                 You are currently offline. Some features may be limited.
               </Alert>
             )}
             <Routes>
-              <Route path="/" element={<Dashboard />} />
-              {currentUser && (
-                <>
-                  <Route path="/study-timer" element={<StudyTimer currentUser={currentUser} />} />
-                  <Route path="/syllabus" element={<Syllabus currentUser={currentUser} />} />
-                  <Route path="/calendar" element={<Calendar />} />
-                </>
-              )}
-              <Route path="/settings" element={<Settings />} />
+              <Route path="/" element={<Dashboard currentUser={currentUser} setCurrentUser={setCurrentUser} />} />
+              <Route path="/study-timer" element={<StudyTimer currentUser={currentUser} />} />
+              <Route path="/syllabus" element={<Syllabus currentUser={currentUser} />} />
+              <Route path="/calendar" element={<Calendar currentUser={currentUser} />} />
+              <Route path="/settings" element={<Settings currentUser={currentUser} />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </Layout>

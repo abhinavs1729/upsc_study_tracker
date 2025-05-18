@@ -27,6 +27,7 @@ import {
   EmojiEvents as TrophyIcon,
   Settings as SettingsIcon,
   Logout as LogoutIcon,
+  LocalFireDepartment as FireIcon,
 } from '@mui/icons-material';
 import { differenceInDays, differenceInHours, differenceInMinutes, startOfWeek, endOfWeek, format, addWeeks, subWeeks } from 'date-fns';
 import {
@@ -59,12 +60,7 @@ import {
   DocumentReference,
   DocumentData
 } from '@firebase/firestore';
-
-interface User {
-  id: string;
-  email: string;
-  role: 'admin' | 'user';
-}
+import { User } from '../types';
 
 interface StudySession {
   id: string;
@@ -139,7 +135,12 @@ const CountdownTimer: React.FC<CountdownTimerProps> = ({ title, targetDate, acce
   );
 };
 
-const Dashboard: React.FC = () => {
+interface DashboardProps {
+  currentUser: User | null;
+  setCurrentUser: (user: User | null) => void;
+}
+
+const Dashboard: React.FC<DashboardProps> = ({ currentUser, setCurrentUser }) => {
   const [sessions, setSessions] = useState<StudySession[]>([]);
   const [prelimsDate, setPrelimsDate] = useState<Date>(new Date('2024-05-26'));
   const [mainsDate, setMainsDate] = useState<Date>(new Date('2024-09-15'));
@@ -159,7 +160,6 @@ const Dashboard: React.FC = () => {
   const [showSignupDialog, setShowSignupDialog] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
   // Load user settings and sessions from Firestore on login
@@ -444,10 +444,10 @@ const Dashboard: React.FC = () => {
     return {
       studyTime: todaySessions
         .filter(session => !session.isBreak)
-        .reduce((total, session) => total + session.duration, 0),
+        .reduce((total, session) => total + (session.duration / 60), 0), // Convert seconds to minutes
       breakTime: todaySessions
         .filter(session => session.isBreak)
-        .reduce((total, session) => total + session.duration, 0),
+        .reduce((total, session) => total + (session.duration / 60), 0), // Convert seconds to minutes
     };
   };
 
@@ -459,16 +459,21 @@ const Dashboard: React.FC = () => {
 
     const weekSessions = sessions.filter(session => {
       const sessionDate = new Date(session.startTime);
-      return sessionDate >= startOfWeek;
+      sessionDate.setHours(0, 0, 0, 0);
+      return sessionDate >= startOfWeek && sessionDate <= today;
     });
 
+    const studyTime = weekSessions
+      .filter(session => !session.isBreak)
+      .reduce((total, session) => total + (session.duration / 60), 0); // Convert seconds to minutes
+
+    const breakTime = weekSessions
+      .filter(session => session.isBreak)
+      .reduce((total, session) => total + (session.duration / 60), 0); // Convert seconds to minutes
+
     return {
-      studyTime: weekSessions
-        .filter(session => !session.isBreak)
-        .reduce((total, session) => total + session.duration, 0),
-      breakTime: weekSessions
-        .filter(session => session.isBreak)
-        .reduce((total, session) => total + session.duration, 0),
+      studyTime,
+      breakTime
     };
   };
 
@@ -497,10 +502,25 @@ const Dashboard: React.FC = () => {
     return streak;
   };
 
-  const formatTime = (seconds: number): string => {
-    const hours = Math.floor(seconds / 3600);
-    const minutes = Math.floor((seconds % 3600) / 60);
-    return `${hours}h ${minutes}m`;
+  const formatTime = (minutes: number): string => {
+    const days = Math.floor(minutes / (24 * 60));
+    const hours = Math.floor((minutes % (24 * 60)) / 60);
+    const mins = minutes % 60;
+    
+    if (days > 0) {
+      return `${days}d ${hours}h ${mins}m`;
+    }
+    if (hours > 0) {
+      return `${hours}h ${mins}m`;
+    }
+    return `${mins}m`;
+  };
+
+  const formatTimeForProgress = (minutes: number): string => {
+    if (!minutes || minutes < 0) return '0h 0m';
+    const hours = Math.floor(minutes / 60);
+    const mins = Math.floor(minutes % 60);
+    return `${hours}h ${mins}m`;
   };
 
   const todayStats = getTodayStats();
@@ -534,6 +554,37 @@ const Dashboard: React.FC = () => {
   };
 
   const chartData = getWeeklyStudyData();
+
+  const getCountdownColor = (days: number) => {
+    if (days > 180) return '#2E7D32'; // Green
+    if (days > 90) return '#ED6C02'; // Orange
+    return '#D32F2F'; // Red
+  };
+
+  const getStreakMessage = (streak: number) => {
+    if (streak === 0) return "Start your study journey today!";
+    if (streak < 3) return "Keep the momentum going!";
+    if (streak < 7) return "You're building a great habit!";
+    if (streak < 14) return "Impressive dedication!";
+    return "You're unstoppable!";
+  };
+
+  const getNextMilestone = (streak: number) => {
+    if (streak < 3) return 3;
+    if (streak < 7) return 7;
+    if (streak < 14) return 14;
+    if (streak < 30) return 30;
+    return 100;
+  };
+
+  const getCountdownDetails = (targetDate: Date) => {
+    const now = new Date();
+    const totalMinutes = differenceInMinutes(targetDate, now);
+    const days = Math.floor(totalMinutes / (24 * 60));
+    const hours = Math.floor((totalMinutes % (24 * 60)) / 60);
+    const minutes = totalMinutes % 60;
+    return { days, hours, minutes };
+  };
 
   if (loading) {
     return <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
@@ -585,56 +636,276 @@ const Dashboard: React.FC = () => {
 
   return (
     <Box sx={{ p: 3, maxWidth: 1200, mx: 'auto' }}>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <Avatar>{currentUser.email[0].toUpperCase()}</Avatar>
-          <Typography variant="subtitle1">
-            {currentUser.email} ({currentUser.role})
-          </Typography>
-        </Box>
-        <Box>
-          <IconButton onClick={() => setShowSettingsDialog(true)}>
-            <SettingsIcon />
-          </IconButton>
-          <IconButton onClick={handleLogout}>
-            <LogoutIcon />
-          </IconButton>
-        </Box>
-      </Box>
+      <Typography 
+        variant="h3" 
+        sx={{ 
+          textAlign: 'center', 
+          mb: 4, 
+          fontFamily: 'Roboto',
+          fontWeight: 700,
+          fontStyle: 'italic',
+          fontSize: '2.5rem'
+        }}
+      >
+        शीलम परम भूषणम
+      </Typography>
 
       <Grid container spacing={3}>
         {/* Countdown Timers */}
         <Grid item xs={12} md={6}>
-          <CountdownTimer title="Prelims" targetDate={prelimsDate} accent="#1976d2" />
+          <Card sx={{ height: '100%', position: 'relative', overflow: 'visible' }}>
+            <CardContent>
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                <Typography variant="h6" sx={{ flex: 1 }}>
+                  Prelims Countdown
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  {format(prelimsDate, 'MMMM d, yyyy')}
+                </Typography>
+              </Box>
+              <Box sx={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'center',
+                position: 'relative',
+                height: 200
+              }}>
+                <Box sx={{ 
+                  position: 'absolute',
+                  width: '100%',
+                  height: '100%',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 2
+                }}>
+                  {(() => {
+                    const { days, hours, minutes } = getCountdownDetails(prelimsDate);
+                    return (
+                      <>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                            <Typography 
+                              variant="h1" 
+                              sx={{ 
+                                fontSize: '6rem',
+                                fontWeight: 700,
+                                color: getCountdownColor(days),
+                                lineHeight: 1
+                              }}
+                            >
+                              {days}
+                            </Typography>
+                            <Typography 
+                              variant="h6" 
+                              color="text.secondary"
+                              sx={{ 
+                                fontWeight: 500
+                              }}
+                            >
+                              days
+                            </Typography>
+                          </Box>
+                          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                            <Typography 
+                              variant="h1" 
+                              sx={{ 
+                                fontSize: '6rem',
+                                fontWeight: 700,
+                                color: getCountdownColor(days),
+                                lineHeight: 1
+                              }}
+                            >
+                              {hours}
+                            </Typography>
+                            <Typography 
+                              variant="h6" 
+                              color="text.secondary"
+                              sx={{ 
+                                fontWeight: 500
+                              }}
+                            >
+                              hours
+                            </Typography>
+                          </Box>
+                          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                            <Typography 
+                              variant="h1" 
+                              sx={{ 
+                                fontSize: '6rem',
+                                fontWeight: 700,
+                                color: getCountdownColor(days),
+                                lineHeight: 1
+                              }}
+                            >
+                              {minutes}
+                            </Typography>
+                            <Typography 
+                              variant="h6" 
+                              color="text.secondary"
+                              sx={{ 
+                                fontWeight: 500
+                              }}
+                            >
+                              minutes
+                            </Typography>
+                          </Box>
+                        </Box>
+                      </>
+                    );
+                  })()}
+                </Box>
+              </Box>
+            </CardContent>
+          </Card>
         </Grid>
         <Grid item xs={12} md={6}>
-          <CountdownTimer title="Mains" targetDate={mainsDate} accent="#1976d2" />
+          <Card sx={{ height: '100%', position: 'relative', overflow: 'visible' }}>
+            <CardContent>
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                <Typography variant="h6" sx={{ flex: 1 }}>
+                  Mains Countdown
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  {format(mainsDate, 'MMMM d, yyyy')}
+                </Typography>
+              </Box>
+              <Box sx={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'center',
+                position: 'relative',
+                height: 200
+              }}>
+                <Box sx={{ 
+                  position: 'absolute',
+                  width: '100%',
+                  height: '100%',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 2
+                }}>
+                  {(() => {
+                    const { days, hours, minutes } = getCountdownDetails(mainsDate);
+                    return (
+                      <>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                            <Typography 
+                              variant="h1" 
+                              sx={{ 
+                                fontSize: '6rem',
+                                fontWeight: 700,
+                                color: getCountdownColor(days),
+                                lineHeight: 1
+                              }}
+                            >
+                              {days}
+                            </Typography>
+                            <Typography 
+                              variant="h6" 
+                              color="text.secondary"
+                              sx={{ 
+                                fontWeight: 500
+                              }}
+                            >
+                              days
+                            </Typography>
+                          </Box>
+                          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                            <Typography 
+                              variant="h1" 
+                              sx={{ 
+                                fontSize: '6rem',
+                                fontWeight: 700,
+                                color: getCountdownColor(days),
+                                lineHeight: 1
+                              }}
+                            >
+                              {hours}
+                            </Typography>
+                            <Typography 
+                              variant="h6" 
+                              color="text.secondary"
+                              sx={{ 
+                                fontWeight: 500
+                              }}
+                            >
+                              hours
+                            </Typography>
+                          </Box>
+                          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                            <Typography 
+                              variant="h1" 
+                              sx={{ 
+                                fontSize: '6rem',
+                                fontWeight: 700,
+                                color: getCountdownColor(days),
+                                lineHeight: 1
+                              }}
+                            >
+                              {minutes}
+                            </Typography>
+                            <Typography 
+                              variant="h6" 
+                              color="text.secondary"
+                              sx={{ 
+                                fontWeight: 500
+                              }}
+                            >
+                              minutes
+                            </Typography>
+                          </Box>
+                        </Box>
+                      </>
+                    );
+                  })()}
+                </Box>
+              </Box>
+            </CardContent>
+          </Card>
         </Grid>
 
         {/* Today's Progress */}
         <Grid item xs={12} md={6}>
-          <Card sx={{ borderRadius: 0, boxShadow: '0 1px 4px rgba(0,0,0,0.04)', border: '1px solid #e0e0e0' }}>
+          <Card>
             <CardContent>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                <Typography variant="h6" gutterBottom>
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                <Typography variant="h6" sx={{ flex: 1 }}>
                   Today's Progress
                 </Typography>
-                <IconButton onClick={() => setShowSettingsDialog(true)} size="small">
+                <IconButton onClick={handleOpenSettings} size="small">
                   <SettingsIcon />
                 </IconButton>
               </Box>
               <Box sx={{ mb: 2 }}>
-                <Typography variant="body2" color="text.secondary" gutterBottom>
-                  {formatTime(getTodayStats().studyTime)} / {formatTime(dailyGoal)}
+                <Typography variant="h3" sx={{ mb: 1 }}>
+                  {formatTimeForProgress(todayStats.studyTime)}
                 </Typography>
+                <Typography variant="body1" color="text.secondary">
+                  {Math.round((todayStats.studyTime / dailyGoal) * 100)}% of daily goal
+                </Typography>
+              </Box>
+              <Box sx={{ mb: 2 }}>
                 <LinearProgress 
                   variant="determinate" 
-                  value={(getTodayStats().studyTime / dailyGoal) * 100} 
-                  sx={{ height: 8, borderRadius: 0 }}
+                  value={Math.min((todayStats.studyTime / dailyGoal) * 100, 100)}
+                  sx={{ 
+                    height: 8,
+                    borderRadius: 4,
+                    backgroundColor: '#f5f5f5',
+                    '& .MuiLinearProgress-bar': {
+                      borderRadius: 4,
+                      backgroundColor: '#2E7D32'
+                    }
+                  }}
                 />
               </Box>
               <Typography variant="body2" color="text.secondary">
-                {getTodayStats().breakTime ? formatTime(getTodayStats().breakTime) : 'No break time'}
+                {formatTimeForProgress(dailyGoal - todayStats.studyTime)} remaining to reach daily goal
               </Typography>
             </CardContent>
           </Card>
@@ -642,46 +913,73 @@ const Dashboard: React.FC = () => {
 
         {/* Weekly Progress */}
         <Grid item xs={12} md={6}>
-          <Card sx={{ borderRadius: 0, boxShadow: '0 1px 4px rgba(0,0,0,0.04)', border: '1px solid #e0e0e0' }}>
+          <Card>
             <CardContent>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                <Typography variant="h6" gutterBottom>
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                <Typography variant="h6" sx={{ flex: 1 }}>
                   Weekly Progress
                 </Typography>
-                <IconButton onClick={() => setShowSettingsDialog(true)} size="small">
+                <IconButton onClick={handleOpenSettings} size="small">
                   <SettingsIcon />
                 </IconButton>
               </Box>
               <Box sx={{ mb: 2 }}>
-                <Typography variant="body2" color="text.secondary" gutterBottom>
-                  {formatTime(getWeeklyStats().studyTime)} / {formatTime(weeklyGoal)}
+                <Typography variant="h3" sx={{ mb: 1 }}>
+                  {formatTimeForProgress(weeklyStats.studyTime)}
                 </Typography>
+                <Typography variant="body1" color="text.secondary">
+                  {Math.round((weeklyStats.studyTime / weeklyGoal) * 100)}% of weekly goal
+                </Typography>
+              </Box>
+              <Box sx={{ mb: 2 }}>
                 <LinearProgress 
                   variant="determinate" 
-                  value={(getWeeklyStats().studyTime / weeklyGoal) * 100} 
-                  sx={{ height: 8, borderRadius: 0 }}
+                  value={Math.min((weeklyStats.studyTime / weeklyGoal) * 100, 100)}
+                  sx={{ 
+                    height: 8,
+                    borderRadius: 4,
+                    backgroundColor: '#f5f5f5',
+                    '& .MuiLinearProgress-bar': {
+                      borderRadius: 4,
+                      backgroundColor: '#2E7D32'
+                    }
+                  }}
                 />
               </Box>
-              <Typography variant="body2" color="text.secondary">
-                {getWeeklyStats().breakTime ? formatTime(getWeeklyStats().breakTime) : 'No break time'}
-              </Typography>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Typography variant="body2" color="text.secondary">
+                  {formatTimeForProgress(weeklyGoal - weeklyStats.studyTime)} remaining this week
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Avg: {formatTimeForProgress(Math.round(weeklyStats.studyTime / 7))}/day
+                </Typography>
+              </Box>
             </CardContent>
           </Card>
         </Grid>
 
         {/* Study Streak */}
-        <Grid item xs={12} md={6}>
-          <Card sx={{ borderRadius: 0, boxShadow: '0 1px 4px rgba(0,0,0,0.04)', border: '1px solid #e0e0e0' }}>
+        <Grid item xs={12}>
+          <Card>
             <CardContent>
-              <Typography variant="h6" gutterBottom>
-                Study Streak
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                <Typography variant="h6" sx={{ flex: 1 }}>
+                  Study Streak
+                </Typography>
+                <FireIcon sx={{ color: '#FF5722', mr: 1 }} />
+                <Typography variant="h6" color="primary">
+                  {streak} days
+                </Typography>
+              </Box>
+              <Typography variant="body1" sx={{ mb: 2 }}>
+                {getStreakMessage(streak)}
               </Typography>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                <Typography variant="h3" sx={{ fontWeight: 700 }}>
-                  {streak}
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <Typography variant="body2" color="text.secondary">
+                  Longest streak: {streak} days
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
-                  days
+                  {getNextMilestone(streak) - streak} days to next milestone
                 </Typography>
               </Box>
             </CardContent>

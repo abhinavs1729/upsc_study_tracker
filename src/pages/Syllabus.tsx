@@ -51,16 +51,7 @@ import {
   query,
   where
 } from '@firebase/firestore';
-
-interface User {
-  id: string;
-  email: string;
-  role: 'admin' | 'user';
-}
-
-interface SyllabusProps {
-  currentUser: User;
-}
+import { User } from '../types';
 
 interface Lecture {
   id: string;
@@ -107,6 +98,10 @@ const STORAGE_KEY = 'syllabus_progress';
 const initialSyllabus: Syllabus = {
   papers: []
 };
+
+interface SyllabusProps {
+  currentUser: User | null;
+}
 
 const Syllabus: React.FC<SyllabusProps> = ({ currentUser }) => {
   const [activeTab, setActiveTab] = useState(0);
@@ -171,7 +166,7 @@ const Syllabus: React.FC<SyllabusProps> = ({ currentUser }) => {
         };
         
         // Save to Firestore
-        const syllabusRef = doc(db, 'users', currentUser.id, 'syllabus', 'current');
+        const syllabusRef = doc(db, 'users', currentUser?.id || '', 'syllabus', 'current');
         await setDoc(syllabusRef, {
           papers: migratedData.papers.map((paper: Paper) => ({
             ...paper,

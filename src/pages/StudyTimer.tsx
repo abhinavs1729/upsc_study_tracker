@@ -55,12 +55,7 @@ import {
   DocumentData,
   deleteDoc
 } from '@firebase/firestore';
-
-interface User {
-  id: string;
-  email: string;
-  role: 'admin' | 'user';
-}
+import { User } from '../types';
 
 interface StudySession {
   id: string;
@@ -73,7 +68,7 @@ interface StudySession {
 }
 
 interface StudyTimerProps {
-  currentUser: User;
+  currentUser: User | null;
 }
 
 interface FirestoreSession {
