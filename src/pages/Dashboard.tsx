@@ -200,12 +200,31 @@ const Dashboard: React.FC<DashboardProps> = ({ currentUser, setCurrentUser }) =>
   }, [currentUser]);
 
   // Save settings to Firestore
-  const handleSaveSettings = () => {
-    setPrelimsDate(new Date(tempPrelimsDate));
-    setMainsDate(new Date(tempMainsDate));
-    setDailyGoal(tempDailyGoal * 60);
-    setWeeklyGoal(tempWeeklyGoal * 60);
-    setShowSettingsDialog(false);
+  const handleSaveSettings = async () => {
+    if (!currentUser) {
+      console.error('No current user found');
+      alert('You must be logged in to save settings');
+      return;
+    }
+
+    try {
+      const userRef = doc(db, 'users', currentUser.id);
+      await updateDoc(userRef, {
+        prelimsDate: new Date(tempPrelimsDate).toISOString(),
+        mainsDate: new Date(tempMainsDate).toISOString(),
+        dailyGoal: tempDailyGoal * 60,
+        weeklyGoal: tempWeeklyGoal * 60
+      });
+
+      setPrelimsDate(new Date(tempPrelimsDate));
+      setMainsDate(new Date(tempMainsDate));
+      setDailyGoal(tempDailyGoal * 60);
+      setWeeklyGoal(tempWeeklyGoal * 60);
+      setShowSettingsDialog(false);
+    } catch (error) {
+      console.error('Error saving settings:', error);
+      alert('Failed to save settings. Please try again.');
+    }
   };
 
   // Save a session to Firestore
@@ -428,7 +447,9 @@ const Dashboard: React.FC<DashboardProps> = ({ currentUser, setCurrentUser }) =>
   const handleOpenSettings = () => {
     setTempPrelimsDate(prelimsDate.toISOString().slice(0, 16));
     setTempMainsDate(mainsDate.toISOString().slice(0, 16));
-    setSettingsOpen(true);
+    setTempDailyGoal(dailyGoal / 60);
+    setTempWeeklyGoal(weeklyGoal / 60);
+    setShowSettingsDialog(true);
   };
 
   const getTodayStats = () => {
@@ -636,19 +657,39 @@ const Dashboard: React.FC<DashboardProps> = ({ currentUser, setCurrentUser }) =>
 
   return (
     <Box sx={{ p: 3, maxWidth: 1200, mx: 'auto' }}>
-      <Typography 
-        variant="h3" 
-        sx={{ 
-          textAlign: 'center', 
-          mb: 4, 
-          fontFamily: 'Roboto',
-          fontWeight: 700,
-          fontStyle: 'italic',
-          fontSize: '2.5rem'
-        }}
-      >
-        शीलम परम भूषणम
-      </Typography>
+      <Box sx={{ 
+        display: 'flex', 
+        flexDirection: 'column', 
+        alignItems: 'center', 
+        mb: 4,
+        position: 'relative'
+      }}>
+        <Typography 
+          variant="h3" 
+          sx={{ 
+            fontFamily: 'Roboto',
+            fontWeight: 700,
+            fontStyle: 'italic',
+            fontSize: '2.5rem',
+            textAlign: 'center'
+          }}
+        >
+          शीलम परम भूषणम
+        </Typography>
+        <IconButton 
+          onClick={handleOpenSettings}
+          sx={{ 
+            position: 'absolute',
+            right: 0,
+            top: '50%',
+            transform: 'translateY(-50%)',
+            bgcolor: '#f5f5f5',
+            '&:hover': { bgcolor: '#e0e0e0' }
+          }}
+        >
+          <SettingsIcon />
+        </IconButton>
+      </Box>
 
       <Grid container spacing={3}>
         {/* Countdown Timers */}
@@ -656,10 +697,10 @@ const Dashboard: React.FC<DashboardProps> = ({ currentUser, setCurrentUser }) =>
           <Card sx={{ height: '100%', position: 'relative', overflow: 'visible' }}>
             <CardContent>
               <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                <Typography variant="h6" sx={{ flex: 1 }}>
+                <Typography variant="h6" sx={{ flex: 1, fontFamily: 'Roboto' }}>
                   Prelims Countdown
                 </Typography>
-                <Typography variant="body2" color="text.secondary">
+                <Typography variant="body2" color="text.secondary" sx={{ fontFamily: 'Roboto' }}>
                   {format(prelimsDate, 'MMMM d, yyyy')}
                 </Typography>
               </Box>
