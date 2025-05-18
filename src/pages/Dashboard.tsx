@@ -103,14 +103,14 @@ const CountdownTimer: React.FC<CountdownTimerProps> = ({ title, targetDate, acce
   }, [targetDate]);
 
   return (
-    <Card sx={{ borderRadius: 3, boxShadow: '0 1px 4px rgba(0,0,0,0.04)', border: `2px solid ${accent}`, background: '#fff' }}>
+    <Card sx={{ borderRadius: 3, boxShadow: '0 1px 4px rgba(0,0,0,0.04)', border: '1px solid #e0e0e0', background: '#fff' }}>
       <CardContent>
-        <Typography variant="h6" gutterBottom sx={{ color: accent, fontWeight: 600 }}>
+        <Typography variant="h6" gutterBottom sx={{ fontWeight: 600 }}>
           {title}
         </Typography>
         <Box sx={{ display: 'flex', justifyContent: 'space-around', mt: 2 }}>
           <Box sx={{ textAlign: 'center' }}>
-            <Typography variant="h3" sx={{ color: accent, fontWeight: 700 }}>
+            <Typography variant="h3" sx={{ fontWeight: 700 }}>
               {timeLeft.days}
             </Typography>
             <Typography variant="body2" color="text.secondary">
@@ -118,7 +118,7 @@ const CountdownTimer: React.FC<CountdownTimerProps> = ({ title, targetDate, acce
             </Typography>
           </Box>
           <Box sx={{ textAlign: 'center' }}>
-            <Typography variant="h3" sx={{ color: accent, fontWeight: 700 }}>
+            <Typography variant="h3" sx={{ fontWeight: 700 }}>
               {timeLeft.hours}
             </Typography>
             <Typography variant="body2" color="text.secondary">
@@ -126,7 +126,7 @@ const CountdownTimer: React.FC<CountdownTimerProps> = ({ title, targetDate, acce
             </Typography>
           </Box>
           <Box sx={{ textAlign: 'center' }}>
-            <Typography variant="h3" sx={{ color: accent, fontWeight: 700 }}>
+            <Typography variant="h3" sx={{ fontWeight: 700 }}>
               {timeLeft.minutes}
             </Typography>
             <Typography variant="body2" color="text.secondary">
@@ -141,13 +141,19 @@ const CountdownTimer: React.FC<CountdownTimerProps> = ({ title, targetDate, acce
 
 const Dashboard: React.FC = () => {
   const [sessions, setSessions] = useState<StudySession[]>([]);
-  const [dailyGoal, setDailyGoal] = useState(360); // 6 hours in minutes
-  const [weeklyGoal, setWeeklyGoal] = useState(1800); // 30 hours in minutes
+  const [prelimsDate, setPrelimsDate] = useState<Date>(new Date('2024-05-26'));
+  const [mainsDate, setMainsDate] = useState<Date>(new Date('2024-09-15'));
+  const [dailyGoal, setDailyGoal] = useState<number>(6 * 60); // 6 hours in minutes
+  const [weeklyGoal, setWeeklyGoal] = useState<number>(30 * 60); // 30 hours in minutes
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [prelimsDate, setPrelimsDate] = useState<Date>(new Date('2024-06-16T09:00:00'));
-  const [mainsDate, setMainsDate] = useState<Date>(new Date('2024-09-20T09:00:00'));
-  const [tempPrelimsDate, setTempPrelimsDate] = useState('');
-  const [tempMainsDate, setTempMainsDate] = useState('');
+  const [tempPrelimsDate, setTempPrelimsDate] = useState<string>(
+    prelimsDate.toISOString().slice(0, 16)
+  );
+  const [tempMainsDate, setTempMainsDate] = useState<string>(
+    mainsDate.toISOString().slice(0, 16)
+  );
+  const [tempDailyGoal, setTempDailyGoal] = useState<number>(dailyGoal / 60);
+  const [tempWeeklyGoal, setTempWeeklyGoal] = useState<number>(weeklyGoal / 60);
   const [showSettingsDialog, setShowSettingsDialog] = useState(false);
   const [showLoginDialog, setShowLoginDialog] = useState(true);
   const [showSignupDialog, setShowSignupDialog] = useState(false);
@@ -194,36 +200,12 @@ const Dashboard: React.FC = () => {
   }, [currentUser]);
 
   // Save settings to Firestore
-  const handleSaveSettings = async () => {
-    if (!tempPrelimsDate || !tempMainsDate) {
-      alert('Please select both Prelims and Mains dates');
-      return;
-    }
-    try {
-      const newPrelimsDate = new Date(tempPrelimsDate);
-      const newMainsDate = new Date(tempMainsDate);
-      if (isNaN(newPrelimsDate.getTime()) || isNaN(newMainsDate.getTime())) {
-        alert('Please enter valid dates');
-        return;
-      }
-      if (newPrelimsDate > newMainsDate) {
-        alert('Prelims date cannot be after Mains date');
-        return;
-      }
-      setPrelimsDate(newPrelimsDate);
-      setMainsDate(newMainsDate);
-      // Save to Firestore
-      if (currentUser) {
-        await updateDoc(doc(db, 'users', currentUser.id), {
-          prelimsDate: newPrelimsDate.toISOString(),
-          mainsDate: newMainsDate.toISOString(),
-        });
-      }
-      setShowSettingsDialog(false);
-    } catch (error) {
-      console.error('Error saving dates:', error);
-      alert('Error saving dates. Please try again.');
-    }
+  const handleSaveSettings = () => {
+    setPrelimsDate(new Date(tempPrelimsDate));
+    setMainsDate(new Date(tempMainsDate));
+    setDailyGoal(tempDailyGoal * 60);
+    setWeeklyGoal(tempWeeklyGoal * 60);
+    setShowSettingsDialog(false);
   };
 
   // Save a session to Firestore
@@ -623,102 +605,92 @@ const Dashboard: React.FC = () => {
       <Grid container spacing={3}>
         {/* Countdown Timers */}
         <Grid item xs={12} md={6}>
-          <CountdownTimer
-            title="Days to Prelims"
-            targetDate={prelimsDate}
-            accent="#2196f3"
-          />
+          <CountdownTimer title="Prelims" targetDate={prelimsDate} accent="#1976d2" />
         </Grid>
         <Grid item xs={12} md={6}>
-          <CountdownTimer
-            title="Days to Mains"
-            targetDate={mainsDate}
-            accent="#f50057"
-          />
+          <CountdownTimer title="Mains" targetDate={mainsDate} accent="#1976d2" />
         </Grid>
 
-        {/* Today's Stats */}
-        <Grid item xs={12} md={4}>
-          <Card sx={{ borderRadius: 3, boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}>
+        {/* Today's Progress */}
+        <Grid item xs={12} md={6}>
+          <Card sx={{ borderRadius: 0, boxShadow: '0 1px 4px rgba(0,0,0,0.04)', border: '1px solid #e0e0e0' }}>
             <CardContent>
-              <Typography variant="h6" gutterBottom>
-                Today's Progress
-              </Typography>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                <Typography variant="h6" gutterBottom>
+                  Today's Progress
+                </Typography>
+                <IconButton onClick={() => setShowSettingsDialog(true)} size="small">
+                  <SettingsIcon />
+                </IconButton>
+              </Box>
               <Box sx={{ mb: 2 }}>
-                <Typography variant="body2" color="text.secondary">
-                  Study Time: {formatTime(todayStats.studyTime)}
+                <Typography variant="body2" color="text.secondary" gutterBottom>
+                  {formatTime(getTodayStats().studyTime)} / {formatTime(dailyGoal)}
                 </Typography>
-                <LinearProgress
-                  variant="determinate"
-                  value={(todayStats.studyTime / dailyGoal) * 100}
-                  sx={{ mt: 1 }}
+                <LinearProgress 
+                  variant="determinate" 
+                  value={(getTodayStats().studyTime / dailyGoal) * 100} 
+                  sx={{ height: 8, borderRadius: 0 }}
                 />
               </Box>
-              <Box>
-                <Typography variant="body2" color="text.secondary">
-                  Break Time: {formatTime(todayStats.breakTime)}
-                </Typography>
-                <LinearProgress
-                  variant="determinate"
-                  value={(todayStats.breakTime / (dailyGoal * 0.2)) * 100}
-                  sx={{ mt: 1 }}
-                  color="secondary"
-                />
-              </Box>
+              <Typography variant="body2" color="text.secondary">
+                {getTodayStats().breakTime ? formatTime(getTodayStats().breakTime) : 'No break time'}
+              </Typography>
             </CardContent>
           </Card>
         </Grid>
 
-        {/* Weekly Stats */}
-        <Grid item xs={12} md={4}>
-          <Card sx={{ borderRadius: 3, boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}>
+        {/* Weekly Progress */}
+        <Grid item xs={12} md={6}>
+          <Card sx={{ borderRadius: 0, boxShadow: '0 1px 4px rgba(0,0,0,0.04)', border: '1px solid #e0e0e0' }}>
             <CardContent>
-              <Typography variant="h6" gutterBottom>
-                Weekly Progress
-              </Typography>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                <Typography variant="h6" gutterBottom>
+                  Weekly Progress
+                </Typography>
+                <IconButton onClick={() => setShowSettingsDialog(true)} size="small">
+                  <SettingsIcon />
+                </IconButton>
+              </Box>
               <Box sx={{ mb: 2 }}>
-                <Typography variant="body2" color="text.secondary">
-                  Study Time: {formatTime(weeklyStats.studyTime)}
+                <Typography variant="body2" color="text.secondary" gutterBottom>
+                  {formatTime(getWeeklyStats().studyTime)} / {formatTime(weeklyGoal)}
                 </Typography>
-                <LinearProgress
-                  variant="determinate"
-                  value={(weeklyStats.studyTime / weeklyGoal) * 100}
-                  sx={{ mt: 1 }}
+                <LinearProgress 
+                  variant="determinate" 
+                  value={(getWeeklyStats().studyTime / weeklyGoal) * 100} 
+                  sx={{ height: 8, borderRadius: 0 }}
                 />
               </Box>
-              <Box>
-                <Typography variant="body2" color="text.secondary">
-                  Break Time: {formatTime(weeklyStats.breakTime)}
-                </Typography>
-                <LinearProgress
-                  variant="determinate"
-                  value={(weeklyStats.breakTime / (weeklyGoal * 0.2)) * 100}
-                  sx={{ mt: 1 }}
-                  color="secondary"
-                />
-              </Box>
+              <Typography variant="body2" color="text.secondary">
+                {getWeeklyStats().breakTime ? formatTime(getWeeklyStats().breakTime) : 'No break time'}
+              </Typography>
             </CardContent>
           </Card>
         </Grid>
 
-        {/* Streak */}
-        <Grid item xs={12} md={4}>
-          <Card sx={{ borderRadius: 3, boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}>
+        {/* Study Streak */}
+        <Grid item xs={12} md={6}>
+          <Card sx={{ borderRadius: 0, boxShadow: '0 1px 4px rgba(0,0,0,0.04)', border: '1px solid #e0e0e0' }}>
             <CardContent>
               <Typography variant="h6" gutterBottom>
-                Current Streak
+                Study Streak
               </Typography>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                <TrophyIcon sx={{ color: '#ffd700' }} />
-                <Typography variant="h4">{streak} days</Typography>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                <Typography variant="h3" sx={{ fontWeight: 700 }}>
+                  {streak}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  days
+                </Typography>
               </Box>
             </CardContent>
           </Card>
         </Grid>
 
-        {/* Weekly Study Chart */}
+        {/* Study Chart */}
         <Grid item xs={12}>
-          <Card sx={{ borderRadius: 3, boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}>
+          <Card sx={{ borderRadius: 0, boxShadow: '0 1px 4px rgba(0,0,0,0.04)', border: '1px solid #e0e0e0' }}>
             <CardContent>
               <Typography variant="h6" gutterBottom>
                 Weekly Study Hours
@@ -726,15 +698,16 @@ const Dashboard: React.FC = () => {
               <Box sx={{ height: 300 }}>
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={chartData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="week" />
-                    <YAxis />
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
+                    <XAxis dataKey="week" stroke="#666" />
+                    <YAxis stroke="#666" />
                     <Tooltip />
-                    <Line
-                      type="monotone"
-                      dataKey="hours"
-                      stroke="#2196f3"
+                    <Line 
+                      type="monotone" 
+                      dataKey="hours" 
+                      stroke="#1976d2" 
                       strokeWidth={2}
+                      dot={{ fill: '#1976d2' }}
                     />
                   </LineChart>
                 </ResponsiveContainer>
@@ -763,6 +736,20 @@ const Dashboard: React.FC = () => {
               value={tempMainsDate}
               onChange={(e) => setTempMainsDate(e.target.value)}
               InputLabelProps={{ shrink: true }}
+              fullWidth
+            />
+            <TextField
+              label="Daily Goal (hours)"
+              type="number"
+              value={tempDailyGoal}
+              onChange={(e) => setTempDailyGoal(Number(e.target.value))}
+              fullWidth
+            />
+            <TextField
+              label="Weekly Goal (hours)"
+              type="number"
+              value={tempWeeklyGoal}
+              onChange={(e) => setTempWeeklyGoal(Number(e.target.value))}
               fullWidth
             />
           </Box>

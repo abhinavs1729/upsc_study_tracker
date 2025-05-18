@@ -30,7 +30,7 @@ import {
   Avatar,
   CircularProgress,
 } from '@mui/material';
-import { Settings as SettingsIcon, Add as AddIcon, Delete as DeleteIcon, FilterList as FilterIcon, CalendarToday as CalendarIcon, Logout as LogoutIcon } from '@mui/icons-material';
+import { Settings as SettingsIcon, Add as AddIcon, Delete as DeleteIcon, FilterList as FilterIcon, CalendarToday as CalendarIcon, Logout as LogoutIcon, PlayArrow as PlayArrowIcon, Pause as PauseIcon, Stop as StopIcon, Refresh as RefreshIcon } from '@mui/icons-material';
 import { format, startOfDay, endOfDay, isSameDay, parseISO, isValid } from 'date-fns';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
@@ -463,62 +463,39 @@ const StudyTimer: React.FC<StudyTimerProps> = ({ currentUser }) => {
     <LocalizationProvider dateAdapter={AdapterDateFns}>
       <Box sx={{ p: 3, maxWidth: 1200, mx: 'auto' }}>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <Avatar>{currentUser.email[0].toUpperCase()}</Avatar>
-            <Typography variant="subtitle1">
-              {currentUser.email} ({currentUser.role})
-            </Typography>
-          </Box>
+          <Typography variant="h4" component="h1">
+            Study Timer
+          </Typography>
           <Box>
             <IconButton onClick={() => setShowSettingsDialog(true)}>
               <SettingsIcon />
             </IconButton>
-            <IconButton onClick={handleLogout}>
-              <LogoutIcon />
-            </IconButton>
           </Box>
         </Box>
 
-        <Card sx={{ mb: 4, borderRadius: 2 }}>
+        <Card sx={{ mb: 3 }}>
           <CardContent>
-            <Typography variant="h4" align="center" sx={{ mb: 3 }}>
-              Study Timer
-            </Typography>
-            <Typography variant="h2" align="center" sx={{ mb: 3, fontFamily: 'monospace' }}>
-              {formatTime(time)}
-            </Typography>
-            <Box sx={{ display: 'flex', justifyContent: 'center', gap: 2, mb: 2 }}>
-              {!isRunning && !isPaused && (
-                <FormControl sx={{ minWidth: 120 }}>
-                  <InputLabel>Session Type</InputLabel>
-                  <Select
-                    value={isBreak ? 'break' : 'study'}
-                    label="Session Type"
-                    onChange={(e) => setIsBreak(e.target.value === 'break')}
-                  >
-                    <MenuItem value="study">Study</MenuItem>
-                    <MenuItem value="break">Break</MenuItem>
-                  </Select>
-                </FormControl>
-              )}
+            <Box sx={{ textAlign: 'center', mb: 3 }}>
+              <Typography variant="h2" component="div" sx={{ fontFamily: 'monospace' }}>
+                {formatTime(time)}
+              </Typography>
             </Box>
-            <Box sx={{ display: 'flex', justifyContent: 'center', gap: 2 }}>
+
+            <Box sx={{ display: 'flex', justifyContent: 'center', gap: 2, mb: 3 }}>
               {!isRunning && !isPaused && (
                 <Button
                   variant="contained"
-                  color={isBreak ? "secondary" : "primary"}
                   onClick={handleStart}
-                  size="large"
+                  startIcon={<PlayArrowIcon />}
                 >
-                  Start {isBreak ? 'Break' : 'Study'}
+                  Start
                 </Button>
               )}
               {isRunning && (
                 <Button
-                  variant="contained"
-                  color="warning"
+                  variant="outlined"
                   onClick={handlePause}
-                  size="large"
+                  startIcon={<PauseIcon />}
                 >
                   Pause
                 </Button>
@@ -526,19 +503,17 @@ const StudyTimer: React.FC<StudyTimerProps> = ({ currentUser }) => {
               {isPaused && (
                 <Button
                   variant="contained"
-                  color="primary"
                   onClick={handleStart}
-                  size="large"
+                  startIcon={<PlayArrowIcon />}
                 >
                   Resume
                 </Button>
               )}
               {(isRunning || isPaused) && (
                 <Button
-                  variant="contained"
-                  color="error"
+                  variant="outlined"
                   onClick={handleStop}
-                  size="large"
+                  startIcon={<StopIcon />}
                 >
                   Stop
                 </Button>
@@ -546,63 +521,55 @@ const StudyTimer: React.FC<StudyTimerProps> = ({ currentUser }) => {
               <Button
                 variant="outlined"
                 onClick={handleReset}
-                disabled={isRunning}
-                size="large"
+                startIcon={<RefreshIcon />}
               >
                 Reset
+              </Button>
+            </Box>
+
+            <Box sx={{ display: 'flex', justifyContent: 'center' }}>
+              <Button
+                variant="outlined"
+                onClick={() => setIsBreak(!isBreak)}
+                sx={{ minWidth: 120 }}
+              >
+                {isBreak ? 'End Break' : 'Take Break'}
               </Button>
             </Box>
           </CardContent>
         </Card>
 
-        <Card sx={{ borderRadius: 2 }}>
+        <Card>
           <CardContent>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-              <Typography variant="h5">
-                Study Sessions
-              </Typography>
-              <Box sx={{ display: 'flex', gap: 2 }}>
-                <DatePicker
-                  label="Select Date"
-                  value={selectedDate}
-                  onChange={(newDate) => newDate && setSelectedDate(newDate)}
-                  slotProps={{
-                    textField: {
-                      sx: { minWidth: 200 },
-                      InputProps: {
-                        startAdornment: <CalendarIcon sx={{ mr: 1, color: 'action.active' }} />,
-                      },
-                    },
-                  }}
-                />
-                <FormControl sx={{ minWidth: 200 }}>
-                  <InputLabel>Filter by Subject</InputLabel>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+              <Typography variant="h6">Today's Sessions</Typography>
+              <Box sx={{ display: 'flex', gap: 1 }}>
+                <FormControl size="small" sx={{ minWidth: 120 }}>
+                  <InputLabel>Subject</InputLabel>
                   <Select
                     value={filterSubject}
-                    label="Filter by Subject"
                     onChange={(e) => setFilterSubject(e.target.value)}
-                    startAdornment={<FilterIcon sx={{ mr: 1 }} />}
+                    label="Subject"
                   >
                     <MenuItem value="all">All Subjects</MenuItem>
                     {subjects.map((sub) => (
-                      <MenuItem key={sub} value={sub}>{sub}</MenuItem>
+                      <MenuItem key={sub} value={sub}>
+                        {sub}
+                      </MenuItem>
                     ))}
                   </Select>
                 </FormControl>
+                <DatePicker
+                  label="Date"
+                  value={selectedDate}
+                  onChange={(newValue) => newValue && setSelectedDate(newValue)}
+                  slotProps={{ textField: { size: 'small' } }}
+                />
               </Box>
             </Box>
 
-            <Box sx={{ mb: 2 }}>
-              <Typography variant="subtitle1" color="text.secondary">
-                {formatDay(format(selectedDate, 'yyyy-MM-dd'))}
-              </Typography>
-              <Typography variant="h6" color="primary">
-                Total Study Time: {formatTime(totalStudyTime)}
-              </Typography>
-            </Box>
-
-            <TableContainer component={Paper} sx={{ maxHeight: 440 }}>
-              <Table stickyHeader>
+            <TableContainer>
+              <Table>
                 <TableHead>
                   <TableRow>
                     <TableCell>Subject</TableCell>
@@ -610,43 +577,95 @@ const StudyTimer: React.FC<StudyTimerProps> = ({ currentUser }) => {
                     <TableCell>End Time</TableCell>
                     <TableCell>Duration</TableCell>
                     <TableCell>Notes</TableCell>
-                    <TableCell>Actions</TableCell>
+                    <TableCell align="right">Actions</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {filteredSessions.slice().reverse().map((session) => (
+                  {filteredSessions.map((session) => (
                     <TableRow key={session.id}>
                       <TableCell>{session.subject}</TableCell>
                       <TableCell>{formatDate(session.startTime)}</TableCell>
                       <TableCell>{formatDate(session.endTime)}</TableCell>
                       <TableCell>{formatTime(session.duration)}</TableCell>
-                      <TableCell sx={{ maxWidth: 200, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                        {session.notes || '-'}
-                      </TableCell>
-                      <TableCell>
+                      <TableCell>{session.notes}</TableCell>
+                      <TableCell align="right">
                         <IconButton
                           size="small"
                           onClick={() => confirmDelete(session)}
-                          sx={{ color: '#000' }}
                         >
                           <DeleteIcon />
                         </IconButton>
                       </TableCell>
                     </TableRow>
                   ))}
-                  {filteredSessions.length === 0 && (
-                    <TableRow>
-                      <TableCell colSpan={6} align="center">
-                        No study sessions found for this day
-                      </TableCell>
-                    </TableRow>
-                  )}
                 </TableBody>
               </Table>
             </TableContainer>
           </CardContent>
         </Card>
 
+        {/* Settings Dialog */}
+        <Dialog open={showSettingsDialog} onClose={() => setShowSettingsDialog(false)}>
+          <DialogTitle>Manage Subjects</DialogTitle>
+          <DialogContent>
+            <Box sx={{ display: 'flex', gap: 1, mb: 2 }}>
+              <TextField
+                size="small"
+                value={newSubject}
+                onChange={(e) => setNewSubject(e.target.value)}
+                placeholder="New subject name"
+              />
+              <Button
+                variant="contained"
+                onClick={handleAddSubject}
+                disabled={!newSubject.trim()}
+              >
+                Add
+              </Button>
+            </Box>
+            <List>
+              {subjects.map((sub) => (
+                <ListItem
+                  key={sub}
+                  secondaryAction={
+                    <IconButton
+                      edge="end"
+                      onClick={() => handleDeleteSubject(sub)}
+                    >
+                      <DeleteIcon />
+                    </IconButton>
+                  }
+                >
+                  <ListItemText primary={sub} />
+                </ListItem>
+              ))}
+            </List>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setShowSettingsDialog(false)}>Close</Button>
+          </DialogActions>
+        </Dialog>
+
+        {/* Delete Confirmation Dialog */}
+        <Dialog open={deleteDialogOpen} onClose={() => setDeleteDialogOpen(false)}>
+          <DialogTitle>Delete Session</DialogTitle>
+          <DialogContent>
+            <Typography>
+              Are you sure you want to delete this session? This action cannot be undone.
+            </Typography>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setDeleteDialogOpen(false)}>Cancel</Button>
+            <Button
+              onClick={() => sessionToDelete && handleDeleteSession(sessionToDelete)}
+              color="error"
+            >
+              Delete
+            </Button>
+          </DialogActions>
+        </Dialog>
+
+        {/* Session Dialog */}
         <Dialog open={showSessionDialog} onClose={() => setShowSessionDialog(false)}>
           <DialogTitle>Save {isBreak ? 'Break' : 'Study'} Session</DialogTitle>
           <DialogContent>
@@ -661,7 +680,9 @@ const StudyTimer: React.FC<StudyTimerProps> = ({ currentUser }) => {
                     required
                   >
                     {subjects.map((sub) => (
-                      <MenuItem key={sub} value={sub}>{sub}</MenuItem>
+                      <MenuItem key={sub} value={sub}>
+                        {sub}
+                      </MenuItem>
                     ))}
                   </Select>
                 </FormControl>
@@ -683,93 +704,10 @@ const StudyTimer: React.FC<StudyTimerProps> = ({ currentUser }) => {
             <Button onClick={() => setShowSessionDialog(false)}>Cancel</Button>
             <Button 
               onClick={handleSaveSession} 
-              variant="contained" 
-              color={isBreak ? "secondary" : "primary"}
+              variant="contained"
               disabled={!isBreak && !subject}
             >
               Save {isBreak ? 'Break' : 'Study'} Session
-            </Button>
-          </DialogActions>
-        </Dialog>
-
-        <Dialog open={showSettingsDialog} onClose={() => setShowSettingsDialog(false)}>
-          <DialogTitle>Manage Subjects</DialogTitle>
-          <DialogContent>
-            <Box sx={{ pt: 2, display: 'flex', flexDirection: 'column', gap: 2 }}>
-              <Box sx={{ display: 'flex', gap: 1 }}>
-                <TextField
-                  label="New Subject"
-                  value={newSubject}
-                  onChange={(e) => setNewSubject(e.target.value)}
-                  fullWidth
-                />
-                <Button
-                  variant="contained"
-                  onClick={handleAddSubject}
-                  disabled={!newSubject}
-                  startIcon={<AddIcon />}
-                >
-                  Add
-                </Button>
-              </Box>
-              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-                {subjects.map((sub) => (
-                  <Chip
-                    key={sub}
-                    label={sub}
-                    onDelete={() => handleDeleteSubject(sub)}
-                    deleteIcon={<DeleteIcon />}
-                  />
-                ))}
-              </Box>
-            </Box>
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={() => setShowSettingsDialog(false)}>Close</Button>
-          </DialogActions>
-        </Dialog>
-
-        <Dialog
-          open={deleteDialogOpen}
-          onClose={() => {
-            setDeleteDialogOpen(false);
-            setSessionToDelete(null);
-          }}
-        >
-          <DialogTitle>Confirm Delete</DialogTitle>
-          <DialogContent>
-            <Typography>
-              Are you sure you want to delete this study session? This action cannot be undone.
-            </Typography>
-            {sessionToDelete && (
-              <Box sx={{ mt: 2 }}>
-                <Typography variant="body2" color="text.secondary">
-                  Subject: {sessionToDelete.subject}
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  Duration: {formatTime(sessionToDelete.duration)}
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  Date: {formatDate(sessionToDelete.startTime)}
-                </Typography>
-              </Box>
-            )}
-          </DialogContent>
-          <DialogActions>
-            <Button 
-              onClick={() => {
-                setDeleteDialogOpen(false);
-                setSessionToDelete(null);
-              }}
-            >
-              Cancel
-            </Button>
-            <Button 
-              onClick={() => sessionToDelete && handleDeleteSession(sessionToDelete)}
-              color="error"
-              variant="contained"
-            >
-              Delete
             </Button>
           </DialogActions>
         </Dialog>

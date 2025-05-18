@@ -5,9 +5,9 @@ import { LocalizationProvider } from '@mui/x-date-pickers';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { initializeApp } from '@firebase/app';
 import { getAuth, onAuthStateChanged, User as FirebaseUser } from '@firebase/auth';
-import { getFirestore, doc, getDoc } from '@firebase/firestore';
+import { getFirestore, doc, getDoc, enableIndexedDbPersistence } from '@firebase/firestore';
 import { getAnalytics } from '@firebase/analytics';
-import { Box, CircularProgress } from '@mui/material';
+import { Box, CircularProgress, Alert, Snackbar } from '@mui/material';
 
 // Pages
 import Dashboard from './pages/Dashboard';
@@ -18,14 +18,6 @@ import Settings from './pages/Settings';
 
 // Components
 import Layout from './components/Layout';
-
-const pastel = {
-  blue: '#A7C7E7',
-  green: '#B5EAD7',
-  pink: '#FFDAC1',
-  yellow: '#FFF5BA',
-  purple: '#C7CEEA',
-};
 
 const theme = createTheme({
   palette: {
@@ -39,51 +31,239 @@ const theme = createTheme({
       secondary: '#555',
     },
     primary: {
-      main: pastel.blue,
-      contrastText: '#222',
+      main: '#1976d2',
     },
     secondary: {
-      main: pastel.pink,
-      contrastText: '#222',
-    },
-    success: {
-      main: pastel.green,
-    },
-    warning: {
-      main: pastel.yellow,
-    },
-    info: {
-      main: pastel.purple,
+      main: '#dc004e',
     },
     divider: '#E0E0E0',
   },
   shape: {
-    borderRadius: 12,
+    borderRadius: 0,
   },
   typography: {
-    fontFamily: '"Inter", "Roboto", "Helvetica", "Arial", sans-serif',
-    fontSize: 16,
-    h1: { fontWeight: 700 },
-    h2: { fontWeight: 600 },
-    h3: { fontWeight: 600 },
-    h4: { fontWeight: 600 },
-    h5: { fontWeight: 500 },
-    h6: { fontWeight: 500 },
+    fontFamily: 'Roboto',
+    allVariants: {
+      fontFamily: 'Roboto',
+    },
+    h1: {
+      fontSize: '2.5rem',
+      fontWeight: 500,
+      fontFamily: 'Roboto',
+    },
+    h2: {
+      fontSize: '2rem',
+      fontWeight: 500,
+      fontFamily: 'Roboto',
+    },
+    h3: {
+      fontSize: '1.75rem',
+      fontWeight: 500,
+      fontFamily: 'Roboto',
+    },
+    h4: {
+      fontSize: '1.5rem',
+      fontWeight: 500,
+      fontFamily: 'Roboto',
+    },
+    h5: {
+      fontSize: '1.25rem',
+      fontWeight: 500,
+      fontFamily: 'Roboto',
+    },
+    h6: {
+      fontSize: '1rem',
+      fontWeight: 500,
+      fontFamily: 'Roboto',
+    },
+    body1: {
+      fontSize: '1rem',
+      lineHeight: 1.5,
+      fontFamily: 'Roboto',
+    },
+    body2: {
+      fontSize: '0.875rem',
+      lineHeight: 1.43,
+      fontFamily: 'Roboto',
+    },
+    button: {
+      textTransform: 'none',
+      fontWeight: 500,
+      fontFamily: 'Roboto',
+    },
   },
   components: {
     MuiPaper: {
       styleOverrides: {
         root: {
           boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
+          borderRadius: 0,
         },
       },
     },
     MuiButton: {
       styleOverrides: {
         root: {
-          borderRadius: 8,
+          borderRadius: 0,
           textTransform: 'none',
           fontWeight: 500,
+          backgroundColor: '#f5f5f5',
+          color: '#222',
+          fontFamily: 'Roboto',
+          '&:hover': {
+            backgroundColor: '#e0e0e0',
+          },
+        },
+        contained: {
+          backgroundColor: '#1976d2',
+          color: '#fff',
+          '&:hover': {
+            backgroundColor: '#1565c0',
+          },
+        },
+      },
+    },
+    MuiCssBaseline: {
+      styleOverrides: {
+        body: {
+          fontFamily: 'Roboto',
+        },
+      },
+    },
+    MuiCard: {
+      styleOverrides: {
+        root: {
+          backgroundColor: '#fff',
+          border: '1px solid #e0e0e0',
+          borderRadius: 0,
+        },
+      },
+    },
+    MuiAppBar: {
+      styleOverrides: {
+        root: {
+          backgroundColor: '#fff',
+          color: '#222',
+          boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
+          borderRadius: 0,
+        },
+      },
+    },
+    MuiTextField: {
+      styleOverrides: {
+        root: {
+          '& .MuiInputBase-input': {
+            fontFamily: 'Roboto',
+          },
+          '& .MuiInputLabel-root': {
+            fontFamily: 'Roboto',
+          },
+          '& .MuiOutlinedInput-root': {
+            borderRadius: 0,
+          },
+        },
+      },
+    },
+    MuiDialogTitle: {
+      styleOverrides: {
+        root: {
+          fontFamily: 'Roboto',
+        },
+      },
+    },
+    MuiDialogContentText: {
+      styleOverrides: {
+        root: {
+          fontFamily: 'Roboto',
+        },
+      },
+    },
+    MuiListItemText: {
+      styleOverrides: {
+        primary: {
+          fontFamily: 'Roboto',
+        },
+        secondary: {
+          fontFamily: 'Roboto',
+        },
+      },
+    },
+    MuiInputBase: {
+      styleOverrides: {
+        root: {
+          fontFamily: 'Roboto',
+          '& .MuiOutlinedInput-root': {
+            borderRadius: 0,
+          },
+        },
+      },
+    },
+    MuiInputLabel: {
+      styleOverrides: {
+        root: {
+          fontFamily: 'Roboto',
+        },
+      },
+    },
+    MuiSelect: {
+      styleOverrides: {
+        root: {
+          fontFamily: 'Roboto',
+          borderRadius: 0,
+        },
+      },
+    },
+    MuiMenuItem: {
+      styleOverrides: {
+        root: {
+          fontFamily: 'Roboto',
+        },
+      },
+    },
+    MuiAlert: {
+      styleOverrides: {
+        root: {
+          fontFamily: 'Roboto',
+          borderRadius: 0,
+        },
+      },
+    },
+    MuiTooltip: {
+      styleOverrides: {
+        tooltip: {
+          fontFamily: 'Roboto',
+          borderRadius: 0,
+        },
+      },
+    },
+    MuiChip: {
+      styleOverrides: {
+        root: {
+          fontFamily: 'Roboto',
+          borderRadius: 0,
+        },
+      },
+    },
+    MuiDialog: {
+      styleOverrides: {
+        paper: {
+          borderRadius: 0,
+        },
+      },
+    },
+    MuiCardContent: {
+      styleOverrides: {
+        root: {
+          '&:last-child': {
+            paddingBottom: 16,
+          },
+        },
+      },
+    },
+    MuiLinearProgress: {
+      styleOverrides: {
+        root: {
+          borderRadius: 0,
         },
       },
     },
@@ -119,6 +299,46 @@ interface User {
 const App: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isOffline, setIsOffline] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Handle offline/online status
+  useEffect(() => {
+    const handleOnline = () => {
+      setIsOffline(false);
+      setError(null);
+    };
+
+    const handleOffline = () => {
+      setIsOffline(true);
+      setError('You are currently offline. Some features may be limited.');
+    };
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    // Check initial online status
+    setIsOffline(!navigator.onLine);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
+
+  // Enable offline persistence
+  useEffect(() => {
+    const enablePersistence = async () => {
+      try {
+        await enableIndexedDbPersistence(db);
+        console.log('Offline persistence enabled');
+      } catch (error) {
+        console.error('Error enabling offline persistence:', error);
+      }
+    };
+
+    enablePersistence();
+  }, []);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
@@ -134,10 +354,18 @@ const App: React.FC = () => {
         setCurrentUser(null);
       }
       setLoading(false);
+    }, (error) => {
+      console.error('Auth state change error:', error);
+      setError('Authentication error. Please try again.');
+      setLoading(false);
     });
 
     return () => unsubscribe();
   }, []);
+
+  const handleCloseError = () => {
+    setError(null);
+  };
 
   if (loading) {
     return (
@@ -147,40 +375,41 @@ const App: React.FC = () => {
     );
   }
 
-  if (!currentUser) {
-    return (
-      <ThemeProvider theme={theme}>
-        <LocalizationProvider dateAdapter={AdapterDateFns}>
-          <CssBaseline />
-          <Router>
-            <Layout>
-              <Routes>
-                <Route path="/" element={<Dashboard />} />
-                <Route path="*" element={<Navigate to="/" replace />} />
-              </Routes>
-            </Layout>
-          </Router>
-        </LocalizationProvider>
-      </ThemeProvider>
-    );
-  }
-
   return (
     <ThemeProvider theme={theme}>
       <LocalizationProvider dateAdapter={AdapterDateFns}>
         <CssBaseline />
         <Router>
           <Layout>
+            {isOffline && (
+              <Alert severity="warning" sx={{ mb: 2 }}>
+                You are currently offline. Some features may be limited.
+              </Alert>
+            )}
             <Routes>
               <Route path="/" element={<Dashboard />} />
-              <Route path="/study-timer" element={<StudyTimer currentUser={currentUser} />} />
-              <Route path="/syllabus" element={<Syllabus currentUser={currentUser} />} />
+              {currentUser && (
+                <>
+                  <Route path="/study-timer" element={<StudyTimer currentUser={currentUser} />} />
+                  <Route path="/syllabus" element={<Syllabus currentUser={currentUser} />} />
+                </>
+              )}
               <Route path="/calendar" element={<Calendar />} />
               <Route path="/settings" element={<Settings />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </Layout>
         </Router>
+        <Snackbar 
+          open={!!error} 
+          autoHideDuration={6000} 
+          onClose={handleCloseError}
+          anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+        >
+          <Alert onClose={handleCloseError} severity="error" sx={{ width: '100%' }}>
+            {error}
+          </Alert>
+        </Snackbar>
       </LocalizationProvider>
     </ThemeProvider>
   );
