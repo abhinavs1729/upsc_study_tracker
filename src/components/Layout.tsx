@@ -4,9 +4,11 @@ import { styled } from '@mui/material/styles';
 import {
   Dashboard as DashboardIcon,
   Timer as TimerIcon,
-  MenuBook as SyllabusIcon,
+  MenuBook as BookIcon,
+  Menu as MenuIcon,
   ChevronLeft as ChevronLeftIcon,
   ChevronRight as ChevronRightIcon,
+  CalendarMonth as CalendarIcon,
 } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
 
@@ -33,7 +35,8 @@ const StyledDrawer = styled(Drawer)(({ theme, open }) => ({
 const menuItems = [
   { text: 'Dashboard', icon: <DashboardIcon />, path: '/' },
   { text: 'Study Timer', icon: <TimerIcon />, path: '/study-timer' },
-  { text: 'Syllabus', icon: <SyllabusIcon />, path: '/syllabus' },
+  { text: 'Syllabus Tracker', icon: <BookIcon />, path: '/syllabus' },
+  { text: 'Calendar', icon: <CalendarIcon />, path: '/calendar' },
 ];
 
 const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {

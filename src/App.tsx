@@ -392,9 +392,9 @@ const App: React.FC = () => {
                 <>
                   <Route path="/study-timer" element={<StudyTimer currentUser={currentUser} />} />
                   <Route path="/syllabus" element={<Syllabus currentUser={currentUser} />} />
+                  <Route path="/calendar" element={<Calendar />} />
                 </>
               )}
-              <Route path="/calendar" element={<Calendar />} />
               <Route path="/settings" element={<Settings />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
