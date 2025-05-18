@@ -267,7 +267,7 @@ const StudyTimer: React.FC<StudyTimerProps> = ({ currentUser }) => {
     if (isPaused) {
       // Resume from pause
       const currentTime = Date.now();
-      const elapsedTime = pausedTimeRef.current;
+      const elapsedTime = pausedTimeRef.current || 0; // milliseconds
       startTimeRef.current = currentTime - elapsedTime;
       setIsPaused(false);
       setIsRunning(true);
@@ -287,7 +287,7 @@ const StudyTimer: React.FC<StudyTimerProps> = ({ currentUser }) => {
     }
     setIsPaused(true);
     setIsRunning(false);
-    pausedTimeRef.current = time;
+    pausedTimeRef.current = time * 1000; // store milliseconds
     startTimeRef.current = null;
   };
 
