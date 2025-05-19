@@ -1,5 +1,14 @@
 import { createTheme } from '@mui/material/styles';
 
+const fontFamily = [
+  'Roboto',
+  '-apple-system',
+  'BlinkMacSystemFont',
+  '"Segoe UI"',
+  'Arial',
+  'sans-serif',
+].join(',');
+
 const theme = createTheme({
   palette: {
     mode: 'light',
@@ -23,76 +32,52 @@ const theme = createTheme({
     borderRadius: 0,
   },
   typography: {
-    fontFamily: [
-      'Roboto',
-      '-apple-system',
-      'BlinkMacSystemFont',
-      '"Segoe UI"',
-      'Arial',
-      'sans-serif',
-    ].join(','),
+    fontFamily,
     allVariants: {
-      fontFamily: [
-        'Roboto',
-        '-apple-system',
-        'BlinkMacSystemFont',
-        '"Segoe UI"',
-        'Arial',
-        'sans-serif',
-      ].join(','),
+      fontFamily,
     },
     h1: {
       fontSize: '2.5rem',
       fontWeight: 500,
-      fontFamily: 'Roboto',
     },
     h2: {
       fontSize: '2rem',
       fontWeight: 500,
-      fontFamily: 'Roboto',
     },
     h3: {
       fontSize: '1.75rem',
       fontWeight: 500,
-      fontFamily: 'Roboto',
     },
     h4: {
       fontSize: '1.5rem',
       fontWeight: 500,
-      fontFamily: 'Roboto',
     },
     h5: {
       fontSize: '1.25rem',
       fontWeight: 500,
-      fontFamily: 'Roboto',
     },
     h6: {
       fontSize: '1rem',
       fontWeight: 500,
-      fontFamily: 'Roboto',
     },
     body1: {
       fontSize: '1rem',
       lineHeight: 1.5,
-      fontFamily: 'Roboto',
     },
     body2: {
       fontSize: '0.875rem',
       lineHeight: 1.43,
-      fontFamily: 'Roboto',
     },
     button: {
       textTransform: 'none',
       fontWeight: 500,
-      fontFamily: 'Roboto',
     },
   },
   components: {
-    MuiPaper: {
+    MuiCssBaseline: {
       styleOverrides: {
-        root: {
-          boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
-          borderRadius: 0,
+        body: {
+          fontFamily,
         },
       },
     },
@@ -104,7 +89,6 @@ const theme = createTheme({
           fontWeight: 500,
           backgroundColor: '#f5f5f5',
           color: '#222',
-          fontFamily: 'Roboto',
           '&:hover': {
             backgroundColor: '#e0e0e0',
           },
@@ -118,17 +102,11 @@ const theme = createTheme({
         },
       },
     },
-    MuiCssBaseline: {
+    MuiPaper: {
       styleOverrides: {
-        body: {
-          fontFamily: [
-            'Roboto',
-            '-apple-system',
-            'BlinkMacSystemFont',
-            '"Segoe UI"',
-            'Arial',
-            'sans-serif',
-          ].join(','),
+        root: {
+          boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
+          borderRadius: 0,
         },
       },
     },
@@ -154,95 +132,9 @@ const theme = createTheme({
     MuiTextField: {
       styleOverrides: {
         root: {
-          '& .MuiInputBase-input': {
-            fontFamily: 'Roboto',
-          },
-          '& .MuiInputLabel-root': {
-            fontFamily: 'Roboto',
-          },
           '& .MuiOutlinedInput-root': {
             borderRadius: 0,
           },
-        },
-      },
-    },
-    MuiDialogTitle: {
-      styleOverrides: {
-        root: {
-          fontFamily: 'Roboto',
-        },
-      },
-    },
-    MuiDialogContentText: {
-      styleOverrides: {
-        root: {
-          fontFamily: 'Roboto',
-        },
-      },
-    },
-    MuiListItemText: {
-      styleOverrides: {
-        primary: {
-          fontFamily: 'Roboto',
-        },
-        secondary: {
-          fontFamily: 'Roboto',
-        },
-      },
-    },
-    MuiInputBase: {
-      styleOverrides: {
-        root: {
-          fontFamily: 'Roboto',
-          '& .MuiOutlinedInput-root': {
-            borderRadius: 0,
-          },
-        },
-      },
-    },
-    MuiInputLabel: {
-      styleOverrides: {
-        root: {
-          fontFamily: 'Roboto',
-        },
-      },
-    },
-    MuiSelect: {
-      styleOverrides: {
-        root: {
-          fontFamily: 'Roboto',
-          borderRadius: 0,
-        },
-      },
-    },
-    MuiMenuItem: {
-      styleOverrides: {
-        root: {
-          fontFamily: 'Roboto',
-        },
-      },
-    },
-    MuiAlert: {
-      styleOverrides: {
-        root: {
-          fontFamily: 'Roboto',
-          borderRadius: 0,
-        },
-      },
-    },
-    MuiTooltip: {
-      styleOverrides: {
-        tooltip: {
-          fontFamily: 'Roboto',
-          borderRadius: 0,
-        },
-      },
-    },
-    MuiChip: {
-      styleOverrides: {
-        root: {
-          fontFamily: 'Roboto',
-          borderRadius: 0,
         },
       },
     },

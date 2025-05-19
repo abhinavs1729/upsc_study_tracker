@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { ThemeProvider } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
@@ -46,18 +46,57 @@ function App() {
   const [error, setError] = useState<string | null>(null);
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
 
-  // Handle offline/online status
+  // Handle online/offline status
+  const handleOnline = useCallback(() => {
+    setIsOffline(false);
+    setError(null);
+  }, []);
+
+  const handleOffline = useCallback(() => {
+    setIsOffline(true);
+    setError('You are currently offline. Some features may be limited.');
+  }, []);
+
+  // Enable offline persistence
+  const enablePersistence = useCallback(async () => {
+    try {
+      await enableIndexedDbPersistence(db);
+      console.log('Offline persistence enabled');
+    } catch (error) {
+      console.error('Error enabling offline persistence:', error);
+    }
+  }, []);
+
+  // Handle auth state changes
+  const handleAuthStateChange = useCallback((user: FirebaseUser | null) => {
+    if (user) {
+      console.log('User authenticated:', user);
+      setCurrentUser({
+        id: user.uid,
+        email: user.email || '',
+        role: 'user'
+      });
+    } else {
+      console.log('No user authenticated');
+      setCurrentUser(null);
+    }
+    setLoading(false);
+  }, []);
+
+  // Handle auth errors
+  const handleAuthError = useCallback((error: Error) => {
+    console.error('Auth state change error:', error);
+    setError('Authentication error. Please try again.');
+    setLoading(false);
+  }, []);
+
+  // Handle error close
+  const handleCloseError = useCallback(() => {
+    setError(null);
+  }, []);
+
+  // Set up event listeners
   useEffect(() => {
-    const handleOnline = () => {
-      setIsOffline(false);
-      setError(null);
-    };
-
-    const handleOffline = () => {
-      setIsOffline(true);
-      setError('You are currently offline. Some features may be limited.');
-    };
-
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
 
@@ -68,48 +107,23 @@ function App() {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
     };
-  }, []);
+  }, [handleOnline, handleOffline]);
 
   // Enable offline persistence
   useEffect(() => {
-    const enablePersistence = async () => {
-      try {
-        await enableIndexedDbPersistence(db);
-        console.log('Offline persistence enabled');
-      } catch (error) {
-        console.error('Error enabling offline persistence:', error);
-      }
-    };
-
     enablePersistence();
-  }, []);
+  }, [enablePersistence]);
 
+  // Set up auth state listener
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      if (user) {
-        console.log('User authenticated:', user);
-        setCurrentUser({
-          id: user.uid,
-          email: user.email || '',
-          role: 'user'
-        });
-      } else {
-        console.log('No user authenticated');
-        setCurrentUser(null);
-      }
-      setLoading(false);
-    }, (error) => {
-      console.error('Auth state change error:', error);
-      setError('Authentication error. Please try again.');
-      setLoading(false);
-    });
+    const unsubscribe = onAuthStateChanged(
+      auth,
+      handleAuthStateChange,
+      handleAuthError
+    );
 
     return () => unsubscribe();
-  }, []);
-
-  const handleCloseError = () => {
-    setError(null);
-  };
+  }, [handleAuthStateChange, handleAuthError]);
 
   if (loading) {
     return (
