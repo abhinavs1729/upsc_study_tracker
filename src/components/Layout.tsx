@@ -58,6 +58,7 @@ const StyledDrawer = styled(Drawer)(({ theme, open }) => ({
     overflowX: 'hidden',
     borderRight: '1px solid rgba(0, 0, 0, 0.12)',
     backgroundColor: '#fff',
+    fontFamily: 'Roboto, sans-serif'
   },
 }));
 
@@ -89,6 +90,7 @@ const Layout: React.FC<LayoutProps> = ({ currentUser, children }) => {
           '& .MuiDrawer-paper': {
             position: 'relative',
             height: '100vh',
+            fontFamily: 'Roboto, sans-serif'
           },
         }}
       >
@@ -186,7 +188,7 @@ const Layout: React.FC<LayoutProps> = ({ currentUser, children }) => {
             <Typography 
               variant="h3" 
               sx={{ 
-                fontFamily: 'Roboto',
+                fontFamily: 'Roboto, sans-serif',
                 fontWeight: 700,
                 fontStyle: 'italic',
                 fontSize: { xs: '2rem', sm: '2.25rem', md: '2.5rem' },

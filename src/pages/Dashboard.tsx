@@ -634,13 +634,13 @@ const Dashboard: React.FC<DashboardProps> = ({ currentUser, setCurrentUser }) =>
   const getResponsiveFontSize = () => {
     if (drawerWidth > 200) {
       return {
-        number: { xs: '2.5rem', sm: '3rem', md: '3.5rem', lg: '4rem' },
-        label: { xs: '0.875rem', sm: '1rem' }
+        number: { xs: '2.5rem', sm: '2.75rem', md: '3rem', lg: '3.25rem' },
+        label: { xs: '1rem', sm: '1.125rem' }
       };
     } else {
       return {
-        number: { xs: '2rem', sm: '2.5rem', md: '3rem', lg: '3.5rem' },
-        label: { xs: '0.75rem', sm: '0.875rem' }
+        number: { xs: '2.25rem', sm: '2.5rem', md: '2.75rem', lg: '3rem' },
+        label: { xs: '0.875rem', sm: '1rem' }
       };
     }
   };
@@ -648,14 +648,14 @@ const Dashboard: React.FC<DashboardProps> = ({ currentUser, setCurrentUser }) =>
   const fontSize = getResponsiveFontSize();
 
   if (loading) {
-    return <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+    return <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', fontFamily: 'Roboto, sans-serif' }}>
       <Typography>Loading...</Typography>
     </Box>;
   }
 
   if (!currentUser) {
     return (
-      <Dialog open={true} onClose={() => {}}>
+      <Dialog open={true} onClose={() => {}} sx={{ '& .MuiDialog-paper': { fontFamily: 'Roboto, sans-serif' } }}>
         <DialogTitle>
           {showSignupDialog ? 'Sign Up' : 'Login'}
         </DialogTitle>
@@ -696,7 +696,7 @@ const Dashboard: React.FC<DashboardProps> = ({ currentUser, setCurrentUser }) =>
   console.log('Current user:', auth.currentUser);
 
   return (
-    <Box sx={{ p: 3, maxWidth: 1200, mx: 'auto' }}>
+    <Box sx={{ p: 3, maxWidth: 1200, mx: 'auto', fontFamily: 'Roboto, sans-serif' }}>
       <Box sx={{ 
         display: 'flex', 
         flexDirection: 'column', 
@@ -704,18 +704,6 @@ const Dashboard: React.FC<DashboardProps> = ({ currentUser, setCurrentUser }) =>
         mb: 4,
         position: 'relative'
       }}>
-        <Typography 
-          variant="h3" 
-          sx={{ 
-            fontFamily: 'Roboto',
-            fontWeight: 700,
-            fontStyle: 'italic',
-            fontSize: '2.5rem',
-            textAlign: 'center'
-          }}
-        >
-          शीलम परम भूषणम
-        </Typography>
         <IconButton 
           onClick={handleOpenSettings}
           sx={{ 
