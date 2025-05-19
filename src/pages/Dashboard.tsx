@@ -19,6 +19,8 @@ import {
   TextField,
   IconButton,
   Avatar,
+  useTheme,
+  useMediaQuery,
 } from '@mui/material';
 import {
   Timeline as TimelineIcon,
@@ -140,7 +142,29 @@ interface DashboardProps {
   setCurrentUser: (user: User | null) => void;
 }
 
+const useDrawerWidth = () => {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const [drawerWidth, setDrawerWidth] = useState(240); // Default width
+
+  useEffect(() => {
+    const handleResize = () => {
+      const drawer = document.querySelector('.MuiDrawer-paper');
+      if (drawer) {
+        setDrawerWidth(drawer.clientWidth);
+      }
+    };
+
+    handleResize(); // Initial check
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  return drawerWidth;
+};
+
 const Dashboard: React.FC<DashboardProps> = ({ currentUser, setCurrentUser }) => {
+  const drawerWidth = useDrawerWidth();
   const [sessions, setSessions] = useState<StudySession[]>([]);
   const [prelimsDate, setPrelimsDate] = useState<Date>(new Date('2024-05-26'));
   const [mainsDate, setMainsDate] = useState<Date>(new Date('2024-09-15'));
@@ -607,6 +631,22 @@ const Dashboard: React.FC<DashboardProps> = ({ currentUser, setCurrentUser }) =>
     return { days, hours, minutes };
   };
 
+  const getResponsiveFontSize = () => {
+    if (drawerWidth > 200) {
+      return {
+        number: { xs: '2.5rem', sm: '3rem', md: '3.5rem', lg: '4rem' },
+        label: { xs: '0.875rem', sm: '1rem' }
+      };
+    } else {
+      return {
+        number: { xs: '2rem', sm: '2.5rem', md: '3rem', lg: '3.5rem' },
+        label: { xs: '0.75rem', sm: '0.875rem' }
+      };
+    }
+  };
+
+  const fontSize = getResponsiveFontSize();
+
   if (loading) {
     return <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
       <Typography>Loading...</Typography>
@@ -709,7 +749,8 @@ const Dashboard: React.FC<DashboardProps> = ({ currentUser, setCurrentUser }) =>
                 alignItems: 'center', 
                 justifyContent: 'center',
                 position: 'relative',
-                height: 200
+                height: 200,
+                overflow: 'hidden'
               }}>
                 <Box sx={{ 
                   position: 'absolute',
@@ -719,21 +760,36 @@ const Dashboard: React.FC<DashboardProps> = ({ currentUser, setCurrentUser }) =>
                   flexDirection: 'column',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  gap: 2
+                  gap: 2,
+                  px: 2
                 }}>
                   {(() => {
                     const { days, hours, minutes } = getCountdownDetails(prelimsDate);
                     return (
                       <>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                        <Box sx={{ 
+                          display: 'flex', 
+                          alignItems: 'center', 
+                          gap: { xs: 2, sm: 3, md: 4 },
+                          width: '100%',
+                          justifyContent: 'space-between'
+                        }}>
+                          <Box sx={{ 
+                            display: 'flex', 
+                            flexDirection: 'column', 
+                            alignItems: 'center',
+                            flex: 1,
+                            minWidth: 0
+                          }}>
                             <Typography 
                               variant="h1" 
                               sx={{ 
-                                fontSize: '6rem',
+                                fontSize: fontSize.number,
                                 fontWeight: 700,
                                 color: getCountdownColor(days),
-                                lineHeight: 1
+                                lineHeight: 1,
+                                width: '100%',
+                                textAlign: 'center'
                               }}
                             >
                               {days}
@@ -742,20 +798,29 @@ const Dashboard: React.FC<DashboardProps> = ({ currentUser, setCurrentUser }) =>
                               variant="h6" 
                               color="text.secondary"
                               sx={{ 
-                                fontWeight: 500
+                                fontWeight: 500,
+                                fontSize: fontSize.label
                               }}
                             >
                               days
                             </Typography>
                           </Box>
-                          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                          <Box sx={{ 
+                            display: 'flex', 
+                            flexDirection: 'column', 
+                            alignItems: 'center',
+                            flex: 1,
+                            minWidth: 0
+                          }}>
                             <Typography 
                               variant="h1" 
                               sx={{ 
-                                fontSize: '6rem',
+                                fontSize: fontSize.number,
                                 fontWeight: 700,
                                 color: getCountdownColor(days),
-                                lineHeight: 1
+                                lineHeight: 1,
+                                width: '100%',
+                                textAlign: 'center'
                               }}
                             >
                               {hours}
@@ -764,20 +829,29 @@ const Dashboard: React.FC<DashboardProps> = ({ currentUser, setCurrentUser }) =>
                               variant="h6" 
                               color="text.secondary"
                               sx={{ 
-                                fontWeight: 500
+                                fontWeight: 500,
+                                fontSize: fontSize.label
                               }}
                             >
                               hours
                             </Typography>
                           </Box>
-                          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                          <Box sx={{ 
+                            display: 'flex', 
+                            flexDirection: 'column', 
+                            alignItems: 'center',
+                            flex: 1,
+                            minWidth: 0
+                          }}>
                             <Typography 
                               variant="h1" 
                               sx={{ 
-                                fontSize: '6rem',
+                                fontSize: fontSize.number,
                                 fontWeight: 700,
                                 color: getCountdownColor(days),
-                                lineHeight: 1
+                                lineHeight: 1,
+                                width: '100%',
+                                textAlign: 'center'
                               }}
                             >
                               {minutes}
@@ -786,7 +860,8 @@ const Dashboard: React.FC<DashboardProps> = ({ currentUser, setCurrentUser }) =>
                               variant="h6" 
                               color="text.secondary"
                               sx={{ 
-                                fontWeight: 500
+                                fontWeight: 500,
+                                fontSize: fontSize.label
                               }}
                             >
                               minutes
@@ -838,10 +913,13 @@ const Dashboard: React.FC<DashboardProps> = ({ currentUser, setCurrentUser }) =>
                             <Typography 
                               variant="h1" 
                               sx={{ 
-                                fontSize: '6rem',
+                                fontSize: fontSize.number,
                                 fontWeight: 700,
                                 color: getCountdownColor(days),
-                                lineHeight: 1
+                                lineHeight: 1,
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                whiteSpace: 'nowrap'
                               }}
                             >
                               {days}
@@ -850,7 +928,8 @@ const Dashboard: React.FC<DashboardProps> = ({ currentUser, setCurrentUser }) =>
                               variant="h6" 
                               color="text.secondary"
                               sx={{ 
-                                fontWeight: 500
+                                fontWeight: 500,
+                                fontSize: fontSize.label
                               }}
                             >
                               days
@@ -860,10 +939,13 @@ const Dashboard: React.FC<DashboardProps> = ({ currentUser, setCurrentUser }) =>
                             <Typography 
                               variant="h1" 
                               sx={{ 
-                                fontSize: '6rem',
+                                fontSize: fontSize.number,
                                 fontWeight: 700,
                                 color: getCountdownColor(days),
-                                lineHeight: 1
+                                lineHeight: 1,
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                whiteSpace: 'nowrap'
                               }}
                             >
                               {hours}
@@ -872,7 +954,8 @@ const Dashboard: React.FC<DashboardProps> = ({ currentUser, setCurrentUser }) =>
                               variant="h6" 
                               color="text.secondary"
                               sx={{ 
-                                fontWeight: 500
+                                fontWeight: 500,
+                                fontSize: fontSize.label
                               }}
                             >
                               hours
@@ -882,10 +965,13 @@ const Dashboard: React.FC<DashboardProps> = ({ currentUser, setCurrentUser }) =>
                             <Typography 
                               variant="h1" 
                               sx={{ 
-                                fontSize: '6rem',
+                                fontSize: fontSize.number,
                                 fontWeight: 700,
                                 color: getCountdownColor(days),
-                                lineHeight: 1
+                                lineHeight: 1,
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                whiteSpace: 'nowrap'
                               }}
                             >
                               {minutes}
@@ -894,7 +980,8 @@ const Dashboard: React.FC<DashboardProps> = ({ currentUser, setCurrentUser }) =>
                               variant="h6" 
                               color="text.secondary"
                               sx={{ 
-                                fontWeight: 500
+                                fontWeight: 500,
+                                fontSize: fontSize.label
                               }}
                             >
                               minutes
