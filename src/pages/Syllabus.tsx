@@ -585,60 +585,66 @@ const Syllabus: React.FC<SyllabusProps> = ({ currentUser }) => {
     }
   };
 
-  const handleBulkAddLectures = () => {
+  const handleBulkAddLectures = async () => {
     if (!selectedSubtopicForBulk || !selectedSubjectForBulk || bulkLectureCount < 1) return;
 
-    const newSyllabus = { ...syllabus };
-    const paper = newSyllabus.papers.find(p => p.id === selectedSubjectForBulk.paperId);
-    
-    if (paper) {
-      const subject = paper.subjects.find(s => s.id === selectedSubjectForBulk.subjectId);
-      if (subject) {
-        const subtopic = subject.subtopics.find(st => st.id === selectedSubtopicForBulk);
-        if (subtopic) {
-          const totalHours = bulkLectureHours + (bulkLectureMinutes / 60);
-          
-          // Find the last lecture number
-          let lastLectureNumber = 0;
-          subtopic.lectures.forEach(lecture => {
-            const match = lecture.title.match(new RegExp(`${bulkLecturePrefix}\\s+(\\d+)`));
-            if (match) {
-              const num = parseInt(match[1]);
-              if (num > lastLectureNumber) {
-                lastLectureNumber = num;
+    try {
+      const newSyllabus = { ...syllabus };
+      const paper = newSyllabus.papers.find(p => p.id === selectedSubjectForBulk.paperId);
+      
+      if (paper) {
+        const subject = paper.subjects.find(s => s.id === selectedSubjectForBulk.subjectId);
+        if (subject) {
+          const subtopic = subject.subtopics.find(st => st.id === selectedSubtopicForBulk);
+          if (subtopic) {
+            const totalHours = bulkLectureHours + (bulkLectureMinutes / 60);
+            
+            // Find the last lecture number
+            let lastLectureNumber = 0;
+            subtopic.lectures.forEach(lecture => {
+              const match = lecture.title.match(new RegExp(`${bulkLecturePrefix}\\s+(\\d+)`));
+              if (match) {
+                const num = parseInt(match[1]);
+                if (num > lastLectureNumber) {
+                  lastLectureNumber = num;
+                }
               }
-            }
-          });
-          
-          // Add lectures to the selected subtopic with full lecture properties
-          for (let i = 1; i <= bulkLectureCount; i++) {
-            subtopic.lectures.push({
-              id: Date.now().toString() + i,
-              title: `${bulkLecturePrefix} ${lastLectureNumber + i}`,
-              topic: '',
-              hours: totalHours,
-              status: 'not_started',
-              notes: '',
-              progress: 0
             });
-          }
+            
+            // Add lectures to the selected subtopic with full lecture properties
+            for (let i = 1; i <= bulkLectureCount; i++) {
+              subtopic.lectures.push({
+                id: Date.now().toString() + i,
+                title: `${bulkLecturePrefix} ${lastLectureNumber + i}`,
+                topic: '',
+                hours: totalHours,
+                status: 'not_started',
+                notes: '',
+                progress: 0
+              });
+            }
 
-          // Update subtopic progress
-          subtopic.progress = calculateLectureProgress(subtopic.lectures);
-          // Update subject progress
-          subject.progress = calculateSubjectProgress([subject]);
+            // Update subtopic progress
+            subtopic.progress = calculateLectureProgress(subtopic.lectures);
+            // Update subject progress
+            subject.progress = calculateSubjectProgress([subject]);
+          }
         }
       }
-    }
 
-    setSyllabus(newSyllabus);
-    setBulkDialogOpen(false);
-    setBulkLectureCount(1);
-    setBulkLectureHours(0);
-    setBulkLectureMinutes(0);
-    setBulkLecturePrefix('Lecture');
-    setSelectedSubtopicForBulk(null);
-    setSelectedSubjectForBulk(null);
+      await saveSyllabus(newSyllabus);
+      
+      setSyllabus(newSyllabus);
+      setBulkDialogOpen(false);
+      setBulkLectureCount(1);
+      setBulkLectureHours(0);
+      setBulkLectureMinutes(0);
+      setBulkLecturePrefix('Lecture');
+      setSelectedSubtopicForBulk(null);
+      setSelectedSubjectForBulk(null);
+    } catch (err: any) {
+      alert(`Error adding lectures: ${err.message}`);
+    }
   };
 
   const handleQuickComplete = async (paperId: string, subjectId: string, subtopicId: string, lectureId: string) => {
