@@ -165,9 +165,40 @@ const Layout: React.FC<LayoutProps> = ({ currentUser, children }) => {
             easing: theme.transitions.easing.sharp,
             duration: theme.transitions.duration.leavingScreen,
           }),
+          overflow: 'auto',
+          position: 'relative',
+          pt: 2
         }}
       >
-        {children}
+        <Box sx={{ 
+          maxWidth: '100%',
+          width: '100%',
+          overflow: 'visible'
+        }}>
+          <Box sx={{ 
+            display: 'flex', 
+            flexDirection: 'column', 
+            alignItems: 'center', 
+            mb: 1,
+            position: 'relative',
+            pt: 1
+          }}>
+            <Typography 
+              variant="h3" 
+              sx={{ 
+                fontFamily: 'Roboto',
+                fontWeight: 700,
+                fontStyle: 'italic',
+                fontSize: { xs: '2rem', sm: '2.25rem', md: '2.5rem' },
+                textAlign: 'center',
+                lineHeight: 1.2
+              }}
+            >
+              शीलम परम भूषणम
+            </Typography>
+          </Box>
+          {children}
+        </Box>
       </Box>
     </Box>
   );
