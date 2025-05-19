@@ -598,11 +598,23 @@ const Syllabus: React.FC<SyllabusProps> = ({ currentUser }) => {
         if (subtopic) {
           const totalHours = bulkLectureHours + (bulkLectureMinutes / 60);
           
+          // Find the last lecture number
+          let lastLectureNumber = 0;
+          subtopic.lectures.forEach(lecture => {
+            const match = lecture.title.match(new RegExp(`${bulkLecturePrefix}\\s+(\\d+)`));
+            if (match) {
+              const num = parseInt(match[1]);
+              if (num > lastLectureNumber) {
+                lastLectureNumber = num;
+              }
+            }
+          });
+          
           // Add lectures to the selected subtopic with full lecture properties
           for (let i = 1; i <= bulkLectureCount; i++) {
             subtopic.lectures.push({
               id: Date.now().toString() + i,
-              title: `${bulkLecturePrefix} ${i}`,
+              title: `${bulkLecturePrefix} ${lastLectureNumber + i}`,
               topic: '',
               hours: totalHours,
               status: 'not_started',
