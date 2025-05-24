@@ -527,20 +527,49 @@ const Dashboard: React.FC<DashboardProps> = ({ currentUser, setCurrentUser }) =>
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    for (let i = 0; i < 7; i++) {
-      const checkDate = new Date(today);
-      checkDate.setDate(today.getDate() - i);
-      
-      const hasStudySession = sessions.some(session => {
-        const sessionDate = new Date(session.startTime);
-        sessionDate.setHours(0, 0, 0, 0);
-        return sessionDate.getTime() === checkDate.getTime() && !session.isBreak;
-      });
+    // First check if there are any study sessions today
+    const hasStudySessionToday = sessions.some(session => {
+      const sessionDate = new Date(session.startTime);
+      sessionDate.setHours(0, 0, 0, 0);
+      return sessionDate.getTime() === today.getTime() && !session.isBreak;
+    });
 
-      if (hasStudySession) {
-        streak++;
-      } else {
-        break;
+    // If there are no study sessions today, start checking previous days
+    if (!hasStudySessionToday) {
+      for (let i = 1; i < 7; i++) {
+        const checkDate = new Date(today);
+        checkDate.setDate(today.getDate() - i);
+        
+        const hasStudySession = sessions.some(session => {
+          const sessionDate = new Date(session.startTime);
+          sessionDate.setHours(0, 0, 0, 0);
+          return sessionDate.getTime() === checkDate.getTime() && !session.isBreak;
+        });
+
+        if (hasStudySession) {
+          streak++;
+        } else {
+          break;
+        }
+      }
+    } else {
+      // If there are study sessions today, start counting from today
+      streak = 1;
+      for (let i = 1; i < 7; i++) {
+        const checkDate = new Date(today);
+        checkDate.setDate(today.getDate() - i);
+        
+        const hasStudySession = sessions.some(session => {
+          const sessionDate = new Date(session.startTime);
+          sessionDate.setHours(0, 0, 0, 0);
+          return sessionDate.getTime() === checkDate.getTime() && !session.isBreak;
+        });
+
+        if (hasStudySession) {
+          streak++;
+        } else {
+          break;
+        }
       }
     }
 
