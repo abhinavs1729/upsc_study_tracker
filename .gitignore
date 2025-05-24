@@ -30,4 +30,7 @@ yarn-error.log*
 
 # Firebase
 .firebase/
-firebase-debug.log 
+firebase-debug.log
+
+# Service account credentials
+backend/serviceAccountKey.json 
