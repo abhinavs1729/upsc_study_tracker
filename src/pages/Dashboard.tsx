@@ -163,6 +163,14 @@ const useDrawerWidth = () => {
   return drawerWidth;
 };
 
+interface ChartDataPoint {
+  date?: string;
+  week?: string;
+  weekEnd?: string;
+  month?: string;
+  hours: number;
+}
+
 const Dashboard: React.FC<DashboardProps> = ({ currentUser, setCurrentUser }) => {
   const drawerWidth = useDrawerWidth();
   const [sessions, setSessions] = useState<StudySession[]>([]);
@@ -185,6 +193,10 @@ const Dashboard: React.FC<DashboardProps> = ({ currentUser, setCurrentUser }) =>
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(true);
+  const [viewMode, setViewMode] = useState<'daily' | 'weekly' | 'monthly'>('daily');
+  const [monthlyGoal, setMonthlyGoal] = useState<number>(120 * 60); // 120 hours in minutes
+  const [tempMonthlyGoal, setTempMonthlyGoal] = useState<number>(monthlyGoal / 60);
+  const [chartView, setChartView] = useState<'daily' | 'weekly' | 'monthly'>('daily');
 
   // Load user settings and sessions from Firestore on login
   useEffect(() => {
@@ -237,13 +249,15 @@ const Dashboard: React.FC<DashboardProps> = ({ currentUser, setCurrentUser }) =>
         prelimsDate: new Date(tempPrelimsDate).toISOString(),
         mainsDate: new Date(tempMainsDate).toISOString(),
         dailyGoal: tempDailyGoal * 60,
-        weeklyGoal: tempWeeklyGoal * 60
+        weeklyGoal: tempWeeklyGoal * 60,
+        monthlyGoal: tempMonthlyGoal * 60
       });
 
       setPrelimsDate(new Date(tempPrelimsDate));
       setMainsDate(new Date(tempMainsDate));
       setDailyGoal(tempDailyGoal * 60);
       setWeeklyGoal(tempWeeklyGoal * 60);
+      setMonthlyGoal(tempMonthlyGoal * 60);
       setShowSettingsDialog(false);
     } catch (error) {
       console.error('Error saving settings:', error);
@@ -473,6 +487,7 @@ const Dashboard: React.FC<DashboardProps> = ({ currentUser, setCurrentUser }) =>
     setTempMainsDate(mainsDate.toISOString().slice(0, 16));
     setTempDailyGoal(dailyGoal / 60);
     setTempWeeklyGoal(weeklyGoal / 60);
+    setTempMonthlyGoal(monthlyGoal / 60);
     setShowSettingsDialog(true);
   };
 
@@ -601,9 +616,34 @@ const Dashboard: React.FC<DashboardProps> = ({ currentUser, setCurrentUser }) =>
   const weeklyStats = getWeeklyStats();
   const streak = getStreak();
 
-  const getWeeklyStudyData = () => {
+  const getDailyStudyData = (): ChartDataPoint[] => {
     const today = new Date();
-    const data = [];
+    const data: ChartDataPoint[] = [];
+    
+    // Get data for the last 25 days
+    for (let i = 24; i >= 0; i--) {
+      const date = new Date(today);
+      date.setDate(today.getDate() - i);
+      
+      const daySessions = sessions.filter(session => {
+        const sessionDate = new Date(session.startTime);
+        return sessionDate.toDateString() === date.toDateString() && !session.isBreak;
+      });
+
+      const totalHours = daySessions.reduce((total, session) => total + session.duration, 0) / 3600; // Convert seconds to hours
+
+      data.push({
+        date: format(date, 'MMM d'),
+        hours: Math.round(totalHours * 10) / 10, // Round to 1 decimal place
+      });
+    }
+
+    return data;
+  };
+
+  const getWeeklyStudyData = (): ChartDataPoint[] => {
+    const today = new Date();
+    const data: ChartDataPoint[] = [];
     
     // Get data for the last 12 weeks
     for (let i = 11; i >= 0; i--) {
@@ -627,7 +667,69 @@ const Dashboard: React.FC<DashboardProps> = ({ currentUser, setCurrentUser }) =>
     return data;
   };
 
-  const chartData = getWeeklyStudyData();
+  const getMonthlyStudyData = (): ChartDataPoint[] => {
+    const today = new Date();
+    const data: ChartDataPoint[] = [];
+    
+    // Get data for the last 6 months
+    for (let i = 5; i >= 0; i--) {
+      const monthStart = new Date(today.getFullYear(), today.getMonth() - i, 1);
+      const monthEnd = new Date(today.getFullYear(), today.getMonth() - i + 1, 0);
+      
+      const monthSessions = sessions.filter(session => {
+        const sessionDate = new Date(session.startTime);
+        return sessionDate >= monthStart && sessionDate <= monthEnd && !session.isBreak;
+      });
+
+      const totalHours = monthSessions.reduce((total, session) => total + session.duration, 0) / 3600; // Convert seconds to hours
+
+      data.push({
+        month: format(monthStart, 'MMM yyyy'),
+        hours: Math.round(totalHours * 10) / 10, // Round to 1 decimal place
+      });
+    }
+
+    return data;
+  };
+
+  const getChartData = (): ChartDataPoint[] => {
+    switch (chartView) {
+      case 'daily':
+        return getDailyStudyData();
+      case 'weekly':
+        return getWeeklyStudyData();
+      case 'monthly':
+        return getMonthlyStudyData();
+      default:
+        return getDailyStudyData();
+    }
+  };
+
+  const getChartTitle = () => {
+    switch (chartView) {
+      case 'daily':
+        return 'Daily Study Hours';
+      case 'weekly':
+        return 'Weekly Study Hours';
+      case 'monthly':
+        return 'Monthly Study Hours';
+      default:
+        return 'Study Hours';
+    }
+  };
+
+  const getXAxisKey = () => {
+    switch (chartView) {
+      case 'daily':
+        return 'date';
+      case 'weekly':
+        return 'week';
+      case 'monthly':
+        return 'month';
+      default:
+        return 'date';
+    }
+  };
 
   const getCountdownColor = (days: number) => {
     if (days > 180) return '#2E7D32'; // Green
@@ -675,6 +777,98 @@ const Dashboard: React.FC<DashboardProps> = ({ currentUser, setCurrentUser }) =>
   };
 
   const fontSize = getResponsiveFontSize();
+
+  // Add monthly stats calculation
+  const getMonthlyStats = () => {
+    const today = new Date();
+    const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+    const endOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+
+    const monthSessions = sessions.filter(session => {
+      const sessionDate = new Date(session.startTime);
+      return sessionDate >= startOfMonth && sessionDate <= endOfMonth && !session.isBreak;
+    });
+
+    return {
+      studyTime: monthSessions.reduce((total, session) => total + (session.duration / 60), 0),
+      breakTime: monthSessions.filter(session => session.isBreak)
+        .reduce((total, session) => total + (session.duration / 60), 0)
+    };
+  };
+
+  const monthlyStats = getMonthlyStats();
+
+  // Add the target hours section with toggle
+  const renderTargetHours = () => {
+    const stats = viewMode === 'daily' ? todayStats : viewMode === 'weekly' ? weeklyStats : monthlyStats;
+    const goal = viewMode === 'daily' ? dailyGoal : viewMode === 'weekly' ? weeklyGoal : monthlyGoal;
+    const progress = Math.min((stats.studyTime / goal) * 100, 100);
+    const remaining = goal - stats.studyTime;
+
+    return (
+      <Card>
+        <CardContent>
+          <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+            <Typography variant="h6" sx={{ flex: 1 }}>
+              Target Hours
+            </Typography>
+            <Box sx={{ display: 'flex', gap: 1 }}>
+              <Button
+                size="small"
+                variant={viewMode === 'daily' ? 'contained' : 'outlined'}
+                onClick={() => setViewMode('daily')}
+              >
+                Daily
+              </Button>
+              <Button
+                size="small"
+                variant={viewMode === 'weekly' ? 'contained' : 'outlined'}
+                onClick={() => setViewMode('weekly')}
+              >
+                Weekly
+              </Button>
+              <Button
+                size="small"
+                variant={viewMode === 'monthly' ? 'contained' : 'outlined'}
+                onClick={() => setViewMode('monthly')}
+              >
+                Monthly
+              </Button>
+            </Box>
+            <IconButton onClick={handleOpenSettings} size="small">
+              <SettingsIcon />
+            </IconButton>
+          </Box>
+          <Box sx={{ mb: 2 }}>
+            <Typography variant="h3" sx={{ mb: 1 }}>
+              {formatTimeForProgress(stats.studyTime)}
+            </Typography>
+            <Typography variant="body1" color="text.secondary">
+              {Math.round(progress)}% of {viewMode} goal
+            </Typography>
+          </Box>
+          <Box sx={{ mb: 2 }}>
+            <LinearProgress 
+              variant="determinate" 
+              value={progress}
+              sx={{ 
+                height: 8,
+                borderRadius: 4,
+                backgroundColor: '#f5f5f5',
+                '& .MuiLinearProgress-bar': {
+                  borderRadius: 4,
+                  backgroundColor: '#2E7D32'
+                }
+              }}
+            />
+          </Box>
+          <Typography variant="body2" color="text.secondary">
+            {formatTimeForProgress(remaining)} remaining to reach {viewMode} goal
+          </Typography>
+        </CardContent>
+      </Card>
+    );
+  };
 
   if (loading) {
     return <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', fontFamily: 'Roboto, sans-serif' }}>
@@ -1014,93 +1208,9 @@ const Dashboard: React.FC<DashboardProps> = ({ currentUser, setCurrentUser }) =>
           </Card>
         </Grid>
 
-        {/* Today's Progress */}
-        <Grid item xs={12} md={6}>
-          <Card>
-            <CardContent>
-              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                <Typography variant="h6" sx={{ flex: 1 }}>
-                  Today's Progress
-                </Typography>
-                <IconButton onClick={handleOpenSettings} size="small">
-                  <SettingsIcon />
-                </IconButton>
-              </Box>
-              <Box sx={{ mb: 2 }}>
-                <Typography variant="h3" sx={{ mb: 1 }}>
-                  {formatTimeForProgress(todayStats.studyTime)}
-                </Typography>
-                <Typography variant="body1" color="text.secondary">
-                  {Math.round((todayStats.studyTime / dailyGoal) * 100)}% of daily goal
-                </Typography>
-              </Box>
-              <Box sx={{ mb: 2 }}>
-                <LinearProgress 
-                  variant="determinate" 
-                  value={Math.min((todayStats.studyTime / dailyGoal) * 100, 100)}
-                  sx={{ 
-                    height: 8,
-                    borderRadius: 4,
-                    backgroundColor: '#f5f5f5',
-                    '& .MuiLinearProgress-bar': {
-                      borderRadius: 4,
-                      backgroundColor: '#2E7D32'
-                    }
-                  }}
-                />
-              </Box>
-              <Typography variant="body2" color="text.secondary">
-                {formatTimeForProgress(dailyGoal - todayStats.studyTime)} remaining to reach daily goal
-              </Typography>
-            </CardContent>
-          </Card>
-        </Grid>
-
-        {/* Weekly Progress */}
-        <Grid item xs={12} md={6}>
-          <Card>
-            <CardContent>
-              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                <Typography variant="h6" sx={{ flex: 1 }}>
-                  Weekly Progress
-                </Typography>
-                <IconButton onClick={handleOpenSettings} size="small">
-                  <SettingsIcon />
-                </IconButton>
-              </Box>
-              <Box sx={{ mb: 2 }}>
-                <Typography variant="h3" sx={{ mb: 1 }}>
-                  {formatTimeForProgress(weeklyStats.studyTime)}
-                </Typography>
-                <Typography variant="body1" color="text.secondary">
-                  {Math.round((weeklyStats.studyTime / weeklyGoal) * 100)}% of weekly goal
-                </Typography>
-              </Box>
-              <Box sx={{ mb: 2 }}>
-                <LinearProgress 
-                  variant="determinate" 
-                  value={Math.min((weeklyStats.studyTime / weeklyGoal) * 100, 100)}
-                  sx={{ 
-                    height: 8,
-                    borderRadius: 4,
-                    backgroundColor: '#f5f5f5',
-                    '& .MuiLinearProgress-bar': {
-                      borderRadius: 4,
-                      backgroundColor: '#2E7D32'
-                    }
-                  }}
-                />
-              </Box>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <Typography variant="body2" color="text.secondary">
-                  {formatTimeForProgress(weeklyGoal - weeklyStats.studyTime)} remaining this week
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  Avg: {formatTimeForProgress(Math.round(weeklyStats.studyTime / 7))}/day
-                </Typography>
-              </Box>
-            </CardContent>
-          </Card>
+        {/* Target Hours */}
+        <Grid item xs={12}>
+          {renderTargetHours()}
         </Grid>
 
         {/* Study Streak */}
@@ -1135,22 +1245,70 @@ const Dashboard: React.FC<DashboardProps> = ({ currentUser, setCurrentUser }) =>
         <Grid item xs={12}>
           <Card sx={{ borderRadius: 0, boxShadow: '0 1px 4px rgba(0,0,0,0.04)', border: '1px solid #e0e0e0' }}>
             <CardContent>
-              <Typography variant="h6" gutterBottom>
-                Weekly Study Hours
-              </Typography>
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                <Typography variant="h6" sx={{ flex: 1 }}>
+                  {getChartTitle()}
+                </Typography>
+                <Box sx={{ display: 'flex', gap: 1 }}>
+                  <Button
+                    size="small"
+                    variant={chartView === 'daily' ? 'contained' : 'outlined'}
+                    onClick={() => setChartView('daily')}
+                  >
+                    Daily
+                  </Button>
+                  <Button
+                    size="small"
+                    variant={chartView === 'weekly' ? 'contained' : 'outlined'}
+                    onClick={() => setChartView('weekly')}
+                  >
+                    Weekly
+                  </Button>
+                  <Button
+                    size="small"
+                    variant={chartView === 'monthly' ? 'contained' : 'outlined'}
+                    onClick={() => setChartView('monthly')}
+                  >
+                    Monthly
+                  </Button>
+                </Box>
+              </Box>
               <Box sx={{ height: 300 }}>
                 <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={chartData}>
+                  <LineChart data={getChartData()}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
-                    <XAxis dataKey="week" stroke="#666" />
-                    <YAxis stroke="#666" />
-                    <Tooltip />
+                    <XAxis 
+                      dataKey={getXAxisKey()} 
+                      stroke="#666"
+                      tick={{ fontSize: 12 }}
+                    />
+                    <YAxis 
+                      stroke="#666"
+                      tick={{ fontSize: 12 }}
+                      label={{ 
+                        value: 'Hours', 
+                        angle: -90, 
+                        position: 'insideLeft',
+                        style: { textAnchor: 'middle', fontSize: 12 }
+                      }}
+                    />
+                    <Tooltip 
+                      formatter={(value: number) => [`${value} hours`, 'Study Time']}
+                      labelFormatter={(label: string) => {
+                        if (chartView === 'weekly') {
+                          const data = getChartData().find((d: ChartDataPoint) => d.week === label);
+                          return data ? `${data.week} - ${data.weekEnd}` : label;
+                        }
+                        return label;
+                      }}
+                    />
                     <Line 
                       type="monotone" 
                       dataKey="hours" 
                       stroke="#1976d2" 
                       strokeWidth={2}
                       dot={{ fill: '#1976d2' }}
+                      activeDot={{ r: 8 }}
                     />
                   </LineChart>
                 </ResponsiveContainer>
@@ -1193,6 +1351,13 @@ const Dashboard: React.FC<DashboardProps> = ({ currentUser, setCurrentUser }) =>
               type="number"
               value={tempWeeklyGoal}
               onChange={(e) => setTempWeeklyGoal(Number(e.target.value))}
+              fullWidth
+            />
+            <TextField
+              label="Monthly Goal (hours)"
+              type="number"
+              value={tempMonthlyGoal}
+              onChange={(e) => setTempMonthlyGoal(Number(e.target.value))}
               fullWidth
             />
           </Box>

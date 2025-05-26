@@ -29,6 +29,7 @@ import {
   Paper,
   Avatar,
   CircularProgress,
+  LinearProgress,
 } from '@mui/material';
 import { Settings as SettingsIcon, Add as AddIcon, Delete as DeleteIcon, FilterList as FilterIcon, CalendarToday as CalendarIcon, Logout as LogoutIcon, PlayArrow as PlayArrowIcon, Pause as PauseIcon, Stop as StopIcon, Refresh as RefreshIcon } from '@mui/icons-material';
 import { format, startOfDay, endOfDay, isSameDay, parseISO, isValid } from 'date-fns';
@@ -80,7 +81,15 @@ interface FirestoreSession {
   notes?: string;
 }
 
-const StudyTimer: React.FC<StudyTimerProps> = ({ currentUser }) => {
+type TimePeriod = 'daily' | 'weekly' | 'monthly';
+
+interface TargetHours {
+  daily: number;
+  weekly: number;
+  monthly: number;
+}
+
+const StudyTimer = ({ currentUser }: StudyTimerProps): JSX.Element => {
   const [time, setTime] = useState(0);
   const [isRunning, setIsRunning] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
@@ -266,6 +275,9 @@ const StudyTimer: React.FC<StudyTimerProps> = ({ currentUser }) => {
       startTimeRef.current = currentTime - elapsedTime;
       setIsPaused(false);
       setIsRunning(true);
+
+      // Clear the paused time reference
+      pausedTimeRef.current = 0;
     } else {
       // Start new timer
       setTime(0);
@@ -276,14 +288,15 @@ const StudyTimer: React.FC<StudyTimerProps> = ({ currentUser }) => {
     }
   };
 
-  const handlePause = () => {
+  const handlePause = async () => {
     if (intervalRef.current) {
       window.clearInterval(intervalRef.current);
     }
     setIsPaused(true);
     setIsRunning(false);
     pausedTimeRef.current = time * 1000; // store milliseconds
-    startTimeRef.current = null;
+    // Do NOT set startTimeRef.current = null here; preserve it for saving.
+    // Do NOT save a session on pause. Only stop should save.
   };
 
   const handleStop = () => {
@@ -347,7 +360,7 @@ const StudyTimer: React.FC<StudyTimerProps> = ({ currentUser }) => {
         setSubject('');
         setNotes('');
         setIsBreak(false);
-        startTimeRef.current = null;
+        startTimeRef.current = null; // Only clear after saving
         pausedTimeRef.current = 0;
         setShowSessionDialog(false);
       } catch (error: any) {
@@ -365,6 +378,8 @@ const StudyTimer: React.FC<StudyTimerProps> = ({ currentUser }) => {
     const hours = Math.floor(totalSeconds / 3600);
     const minutes = Math.floor((totalSeconds % 3600) / 60);
     const seconds = totalSeconds % 60;
+    
+    // Always show HH:MM:SS format for consistency
     return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
   };
 
@@ -395,14 +410,19 @@ const StudyTimer: React.FC<StudyTimerProps> = ({ currentUser }) => {
   )).sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
 
   // Filter sessions by selected date and subject
-  const filteredSessions = userSessions.filter(session => {
-    if (!isValid(session.startTime)) return false;
-    const sessionDate = format(session.startTime, 'yyyy-MM-dd');
-    const selectedDateStr = format(selectedDate, 'yyyy-MM-dd');
-    const matchesDate = sessionDate === selectedDateStr;
-    const matchesSubject = filterSubject === 'all' || session.subject === filterSubject;
-    return matchesDate && matchesSubject;
-  });
+  const filteredSessions = userSessions
+    .filter(session => {
+      if (!isValid(session.startTime)) return false;
+      const sessionDate = format(session.startTime, 'yyyy-MM-dd');
+      const selectedDateStr = format(selectedDate, 'yyyy-MM-dd');
+      const matchesDate = sessionDate === selectedDateStr;
+      const matchesSubject = filterSubject === 'all' || session.subject === filterSubject;
+      return matchesDate && matchesSubject;
+    })
+    .sort((a, b) => {
+      // Sort by start time in descending order (most recent first)
+      return b.startTime.getTime() - a.startTime.getTime();
+    });
 
   // Calculate total study time for the selected day
   const totalStudyTime = filteredSessions.reduce((total, session) => total + session.duration, 0);
@@ -428,6 +448,11 @@ const StudyTimer: React.FC<StudyTimerProps> = ({ currentUser }) => {
   const confirmDelete = (session: StudySession) => {
     setSessionToDelete(session);
     setDeleteDialogOpen(true);
+  };
+
+  // Update the session table to use the new format
+  const renderSessionDuration = (session: StudySession) => {
+    return formatTime(session.duration);
   };
 
   if (loading) {
@@ -563,6 +588,12 @@ const StudyTimer: React.FC<StudyTimerProps> = ({ currentUser }) => {
               </Box>
             </Box>
 
+            <Box sx={{ mb: 2 }}>
+              <Typography variant="subtitle1" color="text.secondary">
+                Total Study Time: {formatTime(totalStudyTime)}
+              </Typography>
+            </Box>
+
             <TableContainer>
               <Table>
                 <TableHead>
@@ -581,7 +612,7 @@ const StudyTimer: React.FC<StudyTimerProps> = ({ currentUser }) => {
                       <TableCell>{session.subject}</TableCell>
                       <TableCell>{formatDate(session.startTime)}</TableCell>
                       <TableCell>{formatDate(session.endTime)}</TableCell>
-                      <TableCell>{formatTime(session.duration)}</TableCell>
+                      <TableCell>{renderSessionDuration(session)}</TableCell>
                       <TableCell>{session.notes}</TableCell>
                       <TableCell align="right">
                         <IconButton
@@ -692,6 +723,9 @@ const StudyTimer: React.FC<StudyTimerProps> = ({ currentUser }) => {
               />
               <Typography variant="body2" color="text.secondary">
                 Duration: {formatTime(time)}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                {time > 0 ? `This session lasted ${formatTime(time)}` : 'No time recorded'}
               </Typography>
             </Box>
           </DialogContent>
