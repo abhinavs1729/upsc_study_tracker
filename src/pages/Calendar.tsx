@@ -17,6 +17,10 @@ import { DateCalendar } from '@mui/x-date-pickers/DateCalendar';
 import { format, startOfDay, endOfDay, isSameDay } from 'date-fns';
 import { PickersDay, PickersDayProps } from '@mui/x-date-pickers/PickersDay';
 import { User, StudySession } from '../types';
+import { db } from '../App';
+import { collection, query, where, onSnapshot, getDocs } from '@firebase/firestore';
+import { doc, getDoc } from '@firebase/firestore';
+import { CircularProgress } from '@mui/material';
 
 const subjectColors: { [key: string]: string } = {
   'General Studies': '#2E7D32',
@@ -35,25 +39,62 @@ const Calendar: React.FC<CalendarProps> = ({ currentUser }) => {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [selectedSubject, setSelectedSubject] = useState<string>('all');
   const [subjects, setSubjects] = useState<string[]>([]);
+  const [loading, setLoading] = useState(true);
 
+  // Load sessions from Firestore
   useEffect(() => {
-    const savedSessions = localStorage.getItem('study_sessions');
-    if (savedSessions) {
-      const parsedSessions = JSON.parse(savedSessions).map((session: any) => ({
-        ...session,
-        startTime: new Date(session.startTime)
-      }));
-      setSessions(parsedSessions);
-      
-      // Extract unique subjects
-      const uniqueSubjects = Array.from(new Set(parsedSessions.map((s: StudySession) => s.subject)));
-      setSubjects(uniqueSubjects as string[]);
+    if (!currentUser) {
+      setLoading(false);
+      return;
     }
-  }, []);
+
+    const loadSessions = async () => {
+      try {
+        setLoading(true);
+        // Get user's subjects
+        const userRef = doc(db, 'users', currentUser.id);
+        const userDoc = await getDoc(userRef);
+        if (userDoc.exists()) {
+          const userData = userDoc.data();
+          setSubjects(userData.subjects || ['General Studies', 'Optional Subject', 'Current Affairs']);
+        }
+
+        // Set up real-time listener for sessions
+        const sessionsRef = collection(db, 'users', currentUser.id, 'sessions');
+        const q = query(sessionsRef);
+        
+        const unsubscribe = onSnapshot(q, (snapshot) => {
+          const loadedSessions = snapshot.docs.map(doc => {
+            const data = doc.data();
+            return {
+              id: doc.id,
+              subject: data.subject,
+              startTime: new Date(data.startTime),
+              endTime: new Date(data.endTime),
+              duration: data.duration,
+              notes: data.notes || '',
+              isBreak: data.isBreak || false
+            };
+          });
+          setSessions(loadedSessions);
+          setLoading(false);
+        });
+
+        return () => unsubscribe();
+      } catch (error) {
+        console.error('Error loading sessions:', error);
+        setLoading(false);
+      }
+    };
+
+    loadSessions();
+  }, [currentUser]);
 
   const getStudyHoursForDate = (date: Date): number => {
-    const dayStart = startOfDay(date);
-    const dayEnd = endOfDay(date);
+    const dayStart = new Date(date);
+    dayStart.setHours(0, 0, 0, 0);
+    const dayEnd = new Date(date);
+    dayEnd.setHours(23, 59, 59, 999);
     
     return sessions
       .filter(session => {
@@ -65,12 +106,14 @@ const Calendar: React.FC<CalendarProps> = ({ currentUser }) => {
           (selectedSubject === 'all' || session.subject === selectedSubject)
         );
       })
-      .reduce((total, session) => total + session.duration, 0) / 60; // Convert minutes to hours
+      .reduce((total, session) => total + session.duration, 0) / 3600; // Convert seconds to hours
   };
 
   const getDayDetails = (date: Date) => {
-    const dayStart = startOfDay(date);
-    const dayEnd = endOfDay(date);
+    const dayStart = new Date(date);
+    dayStart.setHours(0, 0, 0, 0);
+    const dayEnd = new Date(date);
+    dayEnd.setHours(23, 59, 59, 999);
     
     const daySessions = sessions.filter(session => {
       const sessionDate = new Date(session.startTime);
@@ -84,8 +127,8 @@ const Calendar: React.FC<CalendarProps> = ({ currentUser }) => {
     const studySessions = daySessions.filter(s => !s.isBreak);
     const breakSessions = daySessions.filter(s => s.isBreak);
 
-    const totalStudyHours = studySessions.reduce((total, session) => total + session.duration, 0) / 60;
-    const totalBreakHours = breakSessions.reduce((total, session) => total + session.duration, 0) / 60;
+    const totalStudyHours = studySessions.reduce((total, session) => total + session.duration, 0) / 3600;
+    const totalBreakHours = breakSessions.reduce((total, session) => total + session.duration, 0) / 3600;
 
     return {
       studySessions,
@@ -202,6 +245,22 @@ const Calendar: React.FC<CalendarProps> = ({ currentUser }) => {
       </Box>
     );
   };
+
+  if (loading) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  if (!currentUser) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+        <Typography>Please log in to view your calendar</Typography>
+      </Box>
+    );
+  }
 
   const selectedDayDetails = getDayDetails(selectedDate);
 
@@ -437,7 +496,7 @@ const Calendar: React.FC<CalendarProps> = ({ currentUser }) => {
               {Array.from(new Set(selectedDayDetails.studySessions.map(s => s.subject))).map(subject => {
                 const subjectHours = selectedDayDetails.studySessions
                   .filter(s => s.subject === subject)
-                  .reduce((total, s) => total + s.duration, 0) / 60;
+                  .reduce((total, s) => total + s.duration, 0) / 3600;
                 
                 return (
                   <Box key={subject} sx={{ mb: 1 }}>
@@ -483,7 +542,7 @@ const Calendar: React.FC<CalendarProps> = ({ currentUser }) => {
                     {session.subject}
                   </Typography>
                   <Typography variant="body2" sx={{ color: '#666' }}>
-                    {format(new Date(session.startTime), 'h:mm a')} - {(session.duration / 60).toFixed(1)} hours
+                    {format(new Date(session.startTime), 'h:mm a')} - {(session.duration / 3600).toFixed(1)} hours
                   </Typography>
                 </Box>
               ))}
@@ -506,7 +565,7 @@ const Calendar: React.FC<CalendarProps> = ({ currentUser }) => {
                     Break
                   </Typography>
                   <Typography variant="body2" sx={{ color: '#666' }}>
-                    {format(new Date(session.startTime), 'h:mm a')} - {(session.duration / 60).toFixed(1)} hours
+                    {format(new Date(session.startTime), 'h:mm a')} - {(session.duration / 3600).toFixed(1)} hours
                   </Typography>
                 </Box>
               ))}
