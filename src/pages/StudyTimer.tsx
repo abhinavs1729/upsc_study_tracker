@@ -33,7 +33,7 @@ import {
   Grid,
   SelectChangeEvent,
 } from '@mui/material';
-import { Settings as SettingsIcon, Add as AddIcon, Delete as DeleteIcon, FilterList as FilterIcon, CalendarToday as CalendarIcon, Logout as LogoutIcon, PlayArrow as PlayArrowIcon, Pause as PauseIcon, Stop as StopIcon, Refresh as RefreshIcon } from '@mui/icons-material';
+import { Settings as SettingsIcon, Add as AddIcon, Delete as DeleteIcon, FilterList as FilterIcon, CalendarToday as CalendarIcon, Logout as LogoutIcon, PlayArrow as PlayArrowIcon, Pause as PauseIcon, Stop as StopIcon, Refresh as RefreshIcon, Edit as EditIcon } from '@mui/icons-material';
 import { format, startOfDay, endOfDay, isSameDay, parseISO, isValid } from 'date-fns';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
@@ -68,6 +68,11 @@ interface StudySession {
   duration: number;
   notes?: string;
   isBreak: boolean;
+}
+
+interface EditingSession extends Omit<StudySession, 'startTime' | 'endTime'> {
+  startTime: string;
+  endTime: string;
 }
 
 interface StudyTimerProps {
@@ -120,6 +125,8 @@ const StudyTimer = ({ currentUser }: StudyTimerProps): JSX.Element => {
     notes: '',
     isBreak: false
   });
+  const [showEditSessionDialog, setShowEditSessionDialog] = useState(false);
+  const [editingSession, setEditingSession] = useState<EditingSession | null>(null);
 
   // Load timer state from localStorage on mount
   useEffect(() => {
@@ -521,6 +528,62 @@ const StudyTimer = ({ currentUser }: StudyTimerProps): JSX.Element => {
     }
   };
 
+  const handleEditSession = async () => {
+    if (!currentUser || !editingSession) return;
+
+    try {
+      const startTime = new Date(editingSession.startTime);
+      const endTime = new Date(editingSession.endTime);
+      const duration = Math.floor((endTime.getTime() - startTime.getTime()) / 1000);
+
+      const sessionData = {
+        subject: editingSession.subject,
+        startTime: startTime.toISOString(),
+        endTime: endTime.toISOString(),
+        duration: duration,
+        notes: editingSession.notes,
+        isBreak: editingSession.isBreak,
+        updatedAt: new Date().toISOString()
+      };
+
+      // Update in Firestore
+      const sessionRef = doc(db, 'users', currentUser.id, 'sessions', editingSession.id);
+      await setDoc(sessionRef, sessionData, { merge: true });
+
+      // Update local state
+      setSessions(prev => prev.map(session => 
+        session.id === editingSession.id 
+          ? { 
+              ...session, 
+              ...sessionData, 
+              startTime, 
+              endTime, 
+              duration 
+            }
+          : session
+      ));
+
+      setShowEditSessionDialog(false);
+      setEditingSession(null);
+    } catch (error: any) {
+      console.error('Error updating session:', {
+        error,
+        message: error.message,
+        code: error.code
+      });
+      alert(`Error updating session: ${error.message || 'Unknown error occurred'}`);
+    }
+  };
+
+  const startEditingSession = (session: StudySession) => {
+    setEditingSession({
+      ...session,
+      startTime: format(session.startTime, "yyyy-MM-dd'T'HH:mm"),
+      endTime: format(session.endTime, "yyyy-MM-dd'T'HH:mm")
+    });
+    setShowEditSessionDialog(true);
+  };
+
   if (loading) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
@@ -682,6 +745,13 @@ const StudyTimer = ({ currentUser }: StudyTimerProps): JSX.Element => {
                           <TableCell>{renderSessionDuration(session)}</TableCell>
                           <TableCell>{session.notes}</TableCell>
                           <TableCell align="right">
+                            <IconButton
+                              size="small"
+                              onClick={() => startEditingSession(session)}
+                              sx={{ mr: 1 }}
+                            >
+                              <EditIcon />
+                            </IconButton>
                             <IconButton
                               size="small"
                               onClick={() => confirmDelete(session)}
@@ -877,6 +947,89 @@ const StudyTimer = ({ currentUser }: StudyTimerProps): JSX.Element => {
               disabled={!newSession.subject || !newSession.startTime || !newSession.endTime}
             >
               Add Session
+            </Button>
+          </DialogActions>
+        </Dialog>
+
+        {/* Edit Session Dialog */}
+        <Dialog 
+          open={showEditSessionDialog} 
+          onClose={() => {
+            setShowEditSessionDialog(false);
+            setEditingSession(null);
+          }}
+          maxWidth="sm"
+          fullWidth
+        >
+          <DialogTitle>Edit Study Session</DialogTitle>
+          <DialogContent>
+            {editingSession && (
+              <Box sx={{ pt: 2, display: 'flex', flexDirection: 'column', gap: 2 }}>
+                <FormControl fullWidth>
+                  <InputLabel>Subject</InputLabel>
+                  <Select
+                    value={editingSession.subject}
+                    label="Subject"
+                    onChange={(e: SelectChangeEvent) => setEditingSession({ ...editingSession, subject: e.target.value })}
+                  >
+                    {subjects.map((sub) => (
+                      <MenuItem key={sub} value={sub}>
+                        {sub}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+                <TextField
+                  label="Start Time"
+                  type="datetime-local"
+                  value={editingSession.startTime}
+                  onChange={(e) => setEditingSession({ ...editingSession, startTime: e.target.value })}
+                  InputLabelProps={{ shrink: true }}
+                  fullWidth
+                />
+                <TextField
+                  label="End Time"
+                  type="datetime-local"
+                  value={editingSession.endTime}
+                  onChange={(e) => setEditingSession({ ...editingSession, endTime: e.target.value })}
+                  InputLabelProps={{ shrink: true }}
+                  fullWidth
+                />
+                <TextField
+                  label="Notes"
+                  multiline
+                  rows={3}
+                  value={editingSession.notes}
+                  onChange={(e) => setEditingSession({ ...editingSession, notes: e.target.value })}
+                  fullWidth
+                />
+                <FormControl fullWidth>
+                  <InputLabel>Session Type</InputLabel>
+                  <Select
+                    value={editingSession.isBreak ? 'break' : 'study'}
+                    label="Session Type"
+                    onChange={(e: SelectChangeEvent) => setEditingSession({ ...editingSession, isBreak: e.target.value === 'break' })}
+                  >
+                    <MenuItem value="study">Study Session</MenuItem>
+                    <MenuItem value="break">Break</MenuItem>
+                  </Select>
+                </FormControl>
+              </Box>
+            )}
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => {
+              setShowEditSessionDialog(false);
+              setEditingSession(null);
+            }}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleEditSession} 
+              variant="contained"
+              disabled={!editingSession?.subject || !editingSession?.startTime || !editingSession?.endTime}
+            >
+              Save Changes
             </Button>
           </DialogActions>
         </Dialog>
