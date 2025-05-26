@@ -30,6 +30,8 @@ import {
   Avatar,
   CircularProgress,
   LinearProgress,
+  Grid,
+  SelectChangeEvent,
 } from '@mui/material';
 import { Settings as SettingsIcon, Add as AddIcon, Delete as DeleteIcon, FilterList as FilterIcon, CalendarToday as CalendarIcon, Logout as LogoutIcon, PlayArrow as PlayArrowIcon, Pause as PauseIcon, Stop as StopIcon, Refresh as RefreshIcon } from '@mui/icons-material';
 import { format, startOfDay, endOfDay, isSameDay, parseISO, isValid } from 'date-fns';
@@ -110,6 +112,14 @@ const StudyTimer = ({ currentUser }: StudyTimerProps): JSX.Element => {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [sessionToDelete, setSessionToDelete] = useState<StudySession | null>(null);
   const [isBreak, setIsBreak] = useState(false);
+  const [showAddSessionDialog, setShowAddSessionDialog] = useState(false);
+  const [newSession, setNewSession] = useState({
+    subject: '',
+    startTime: format(new Date(), "yyyy-MM-dd'T'HH:mm"),
+    endTime: format(new Date(), "yyyy-MM-dd'T'HH:mm"),
+    notes: '',
+    isBreak: false
+  });
 
   // Load timer state from localStorage on mount
   useEffect(() => {
@@ -455,6 +465,62 @@ const StudyTimer = ({ currentUser }: StudyTimerProps): JSX.Element => {
     return formatTime(session.duration);
   };
 
+  const handleAddSession = async () => {
+    try {
+      const startTime = new Date(newSession.startTime);
+      const endTime = new Date(newSession.endTime);
+      const duration = Math.floor((endTime.getTime() - startTime.getTime()) / 1000); // Convert to seconds
+
+      if (!currentUser) {
+        throw new Error('You must be logged in to save sessions');
+      }
+
+      const sessionData = {
+        subject: newSession.subject,
+        startTime: startTime.toISOString(),
+        endTime: endTime.toISOString(),
+        duration: duration,
+        notes: newSession.notes,
+        isBreak: newSession.isBreak,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+
+      // Save to Firestore
+      const sessionsRef = collection(db, 'users', currentUser.id, 'sessions');
+      const newDocRef = await addDoc(sessionsRef, sessionData);
+      console.log('Session saved successfully with ID:', newDocRef.id);
+      
+      // Update local state
+      const updatedSession = {
+        id: newDocRef.id,
+        subject: newSession.subject,
+        startTime,
+        endTime,
+        duration,
+        notes: newSession.notes,
+        isBreak: newSession.isBreak
+      };
+      setSessions(prev => [...prev, updatedSession]);
+
+      setShowAddSessionDialog(false);
+      setNewSession({
+        subject: '',
+        startTime: format(new Date(), "yyyy-MM-dd'T'HH:mm"),
+        endTime: format(new Date(), "yyyy-MM-dd'T'HH:mm"),
+        notes: '',
+        isBreak: false
+      });
+    } catch (error: any) {
+      console.error('Error adding session:', {
+        error,
+        message: error.message,
+        code: error.code
+      });
+      alert(`Error adding session: ${error.message || 'Unknown error occurred'}`);
+    }
+  };
+
   if (loading) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
@@ -493,142 +559,145 @@ const StudyTimer = ({ currentUser }: StudyTimerProps): JSX.Element => {
           </Box>
         </Box>
 
-        <Card sx={{ mb: 3 }}>
-          <CardContent>
-            <Box sx={{ textAlign: 'center', mb: 3 }}>
-              <Typography variant="h2" component="div" sx={{ fontFamily: 'monospace' }}>
-                {formatTime(time)}
-              </Typography>
-            </Box>
+        <Grid container spacing={3}>
+          <Grid item xs={12}>
+            <Card>
+              <CardContent>
+                <Box sx={{ textAlign: 'center', mb: 3 }}>
+                  <Typography variant="h2" component="div" sx={{ fontFamily: 'monospace' }}>
+                    {formatTime(time)}
+                  </Typography>
+                </Box>
 
-            <Box sx={{ display: 'flex', justifyContent: 'center', gap: 2, mb: 3 }}>
-              {!isRunning && !isPaused && (
-                <Button
-                  variant="contained"
-                  onClick={handleStart}
-                  startIcon={<PlayArrowIcon />}
-                >
-                  Start
-                </Button>
-              )}
-              {isRunning && (
-                <Button
-                  variant="outlined"
-                  onClick={handlePause}
-                  startIcon={<PauseIcon />}
-                >
-                  Pause
-                </Button>
-              )}
-              {isPaused && (
-                <Button
-                  variant="contained"
-                  onClick={handleStart}
-                  startIcon={<PlayArrowIcon />}
-                >
-                  Resume
-                </Button>
-              )}
-              {(isRunning || isPaused) && (
-                <Button
-                  variant="outlined"
-                  onClick={handleStop}
-                  startIcon={<StopIcon />}
-                >
-                  Stop
-                </Button>
-              )}
-              <Button
-                variant="outlined"
-                onClick={handleReset}
-                startIcon={<RefreshIcon />}
-              >
-                Reset
-              </Button>
-            </Box>
+                <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, mb: 3 }}>
+                  <Box sx={{ display: 'flex', gap: 2 }}>
+                    {!isRunning && !isPaused && (
+                      <Button
+                        variant="contained"
+                        onClick={handleStart}
+                        startIcon={<PlayArrowIcon />}
+                      >
+                        Start
+                      </Button>
+                    )}
+                    {isRunning && (
+                      <Button
+                        variant="outlined"
+                        onClick={handlePause}
+                        startIcon={<PauseIcon />}
+                      >
+                        Pause
+                      </Button>
+                    )}
+                    {isPaused && (
+                      <Button
+                        variant="contained"
+                        onClick={handleStart}
+                        startIcon={<PlayArrowIcon />}
+                      >
+                        Resume
+                      </Button>
+                    )}
+                    {(isRunning || isPaused) && (
+                      <Button
+                        variant="outlined"
+                        onClick={handleStop}
+                        startIcon={<StopIcon />}
+                      >
+                        Stop
+                      </Button>
+                    )}
+                    <Button
+                      variant="outlined"
+                      onClick={handleReset}
+                      startIcon={<RefreshIcon />}
+                    >
+                      Reset
+                    </Button>
+                  </Box>
 
-            <Box sx={{ display: 'flex', justifyContent: 'center' }}>
-              <Button
-                variant="outlined"
-                onClick={() => setIsBreak(!isBreak)}
-                sx={{ minWidth: 120 }}
-              >
-                {isBreak ? 'End Break' : 'Take Break'}
-              </Button>
-            </Box>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-              <Typography variant="h6">Today's Sessions</Typography>
-              <Box sx={{ display: 'flex', gap: 1 }}>
-                <FormControl size="small" sx={{ minWidth: 120 }}>
-                  <InputLabel>Subject</InputLabel>
-                  <Select
-                    value={filterSubject}
-                    onChange={(e) => setFilterSubject(e.target.value)}
-                    label="Subject"
+                  <Button
+                    variant="contained"
+                    onClick={() => setShowAddSessionDialog(true)}
+                    startIcon={<AddIcon />}
+                    sx={{ minWidth: 200 }}
                   >
-                    <MenuItem value="all">All Subjects</MenuItem>
-                    {subjects.map((sub) => (
-                      <MenuItem key={sub} value={sub}>
-                        {sub}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-                <DatePicker
-                  label="Date"
-                  value={selectedDate}
-                  onChange={(newValue) => newValue && setSelectedDate(newValue)}
-                  slotProps={{ textField: { size: 'small' } }}
-                />
-              </Box>
-            </Box>
+                    Add Manual Session
+                  </Button>
+                </Box>
 
-            <Box sx={{ mb: 2 }}>
-              <Typography variant="subtitle1" color="text.secondary">
-                Total Study Time: {formatTime(totalStudyTime)}
-              </Typography>
-            </Box>
+                <Divider sx={{ my: 3 }} />
 
-            <TableContainer>
-              <Table>
-                <TableHead>
-                  <TableRow>
-                    <TableCell>Subject</TableCell>
-                    <TableCell>Start Time</TableCell>
-                    <TableCell>End Time</TableCell>
-                    <TableCell>Duration</TableCell>
-                    <TableCell>Notes</TableCell>
-                    <TableCell align="right">Actions</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {filteredSessions.map((session) => (
-                    <TableRow key={session.id}>
-                      <TableCell>{session.subject}</TableCell>
-                      <TableCell>{formatDate(session.startTime)}</TableCell>
-                      <TableCell>{formatDate(session.endTime)}</TableCell>
-                      <TableCell>{renderSessionDuration(session)}</TableCell>
-                      <TableCell>{session.notes}</TableCell>
-                      <TableCell align="right">
-                        <IconButton
-                          size="small"
-                          onClick={() => confirmDelete(session)}
-                        >
-                          <DeleteIcon />
-                        </IconButton>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
-          </CardContent>
-        </Card>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                  <Typography variant="h6">Today's Sessions</Typography>
+                  <Box sx={{ display: 'flex', gap: 1 }}>
+                    <FormControl size="small" sx={{ minWidth: 120 }}>
+                      <InputLabel>Subject</InputLabel>
+                      <Select
+                        value={filterSubject}
+                        onChange={(e) => setFilterSubject(e.target.value)}
+                        label="Subject"
+                      >
+                        <MenuItem value="all">All Subjects</MenuItem>
+                        {subjects.map((sub) => (
+                          <MenuItem key={sub} value={sub}>
+                            {sub}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                    <DatePicker
+                      label="Date"
+                      value={selectedDate}
+                      onChange={(newValue) => newValue && setSelectedDate(newValue)}
+                      slotProps={{ textField: { size: 'small' } }}
+                    />
+                  </Box>
+                </Box>
+
+                <Box sx={{ mb: 2 }}>
+                  <Typography variant="subtitle1" color="text.secondary">
+                    Total Study Time: {formatTime(totalStudyTime)}
+                  </Typography>
+                </Box>
+
+                <TableContainer>
+                  <Table>
+                    <TableHead>
+                      <TableRow>
+                        <TableCell>Subject</TableCell>
+                        <TableCell>Start Time</TableCell>
+                        <TableCell>End Time</TableCell>
+                        <TableCell>Duration</TableCell>
+                        <TableCell>Notes</TableCell>
+                        <TableCell align="right">Actions</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {filteredSessions.map((session) => (
+                        <TableRow key={session.id}>
+                          <TableCell>{session.subject}</TableCell>
+                          <TableCell>{formatDate(session.startTime)}</TableCell>
+                          <TableCell>{formatDate(session.endTime)}</TableCell>
+                          <TableCell>{renderSessionDuration(session)}</TableCell>
+                          <TableCell>{session.notes}</TableCell>
+                          <TableCell align="right">
+                            <IconButton
+                              size="small"
+                              onClick={() => confirmDelete(session)}
+                            >
+                              <DeleteIcon />
+                            </IconButton>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              </CardContent>
+            </Card>
+          </Grid>
+        </Grid>
 
         {/* Settings Dialog */}
         <Dialog open={showSettingsDialog} onClose={() => setShowSettingsDialog(false)}>
@@ -737,6 +806,77 @@ const StudyTimer = ({ currentUser }: StudyTimerProps): JSX.Element => {
               disabled={!isBreak && !subject}
             >
               Save {isBreak ? 'Break' : 'Study'} Session
+            </Button>
+          </DialogActions>
+        </Dialog>
+
+        {/* Add Session Dialog */}
+        <Dialog 
+          open={showAddSessionDialog} 
+          onClose={() => setShowAddSessionDialog(false)}
+          maxWidth="sm"
+          fullWidth
+        >
+          <DialogTitle>Add Study Session</DialogTitle>
+          <DialogContent>
+            <Box sx={{ pt: 2, display: 'flex', flexDirection: 'column', gap: 2 }}>
+              <FormControl fullWidth>
+                <InputLabel>Subject</InputLabel>
+                <Select
+                  value={newSession.subject}
+                  label="Subject"
+                  onChange={(e: SelectChangeEvent) => setNewSession({ ...newSession, subject: e.target.value })}
+                >
+                  <MenuItem value="General Studies">General Studies</MenuItem>
+                  <MenuItem value="Optional Subject">Optional Subject</MenuItem>
+                  <MenuItem value="Current Affairs">Current Affairs</MenuItem>
+                </Select>
+              </FormControl>
+              <TextField
+                label="Start Time"
+                type="datetime-local"
+                value={newSession.startTime}
+                onChange={(e) => setNewSession({ ...newSession, startTime: e.target.value })}
+                InputLabelProps={{ shrink: true }}
+                fullWidth
+              />
+              <TextField
+                label="End Time"
+                type="datetime-local"
+                value={newSession.endTime}
+                onChange={(e) => setNewSession({ ...newSession, endTime: e.target.value })}
+                InputLabelProps={{ shrink: true }}
+                fullWidth
+              />
+              <TextField
+                label="Notes"
+                multiline
+                rows={3}
+                value={newSession.notes}
+                onChange={(e) => setNewSession({ ...newSession, notes: e.target.value })}
+                fullWidth
+              />
+              <FormControl fullWidth>
+                <InputLabel>Session Type</InputLabel>
+                <Select
+                  value={newSession.isBreak ? 'break' : 'study'}
+                  label="Session Type"
+                  onChange={(e: SelectChangeEvent) => setNewSession({ ...newSession, isBreak: e.target.value === 'break' })}
+                >
+                  <MenuItem value="study">Study Session</MenuItem>
+                  <MenuItem value="break">Break</MenuItem>
+                </Select>
+              </FormControl>
+            </Box>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setShowAddSessionDialog(false)}>Cancel</Button>
+            <Button 
+              onClick={handleAddSession} 
+              variant="contained"
+              disabled={!newSession.subject || !newSession.startTime || !newSession.endTime}
+            >
+              Add Session
             </Button>
           </DialogActions>
         </Dialog>

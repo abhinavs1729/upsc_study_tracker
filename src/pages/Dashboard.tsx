@@ -40,6 +40,8 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
+  AreaChart,
+  Area,
 } from 'recharts';
 import { auth, db } from '../App';
 import { 
@@ -197,6 +199,7 @@ const Dashboard: React.FC<DashboardProps> = ({ currentUser, setCurrentUser }) =>
   const [monthlyGoal, setMonthlyGoal] = useState<number>(120 * 60); // 120 hours in minutes
   const [tempMonthlyGoal, setTempMonthlyGoal] = useState<number>(monthlyGoal / 60);
   const [chartView, setChartView] = useState<'daily' | 'weekly' | 'monthly'>('daily');
+  const [settings, setSettings] = useState<any>(null);
 
   // Load user settings and sessions from Firestore on login
   useEffect(() => {
@@ -210,6 +213,7 @@ const Dashboard: React.FC<DashboardProps> = ({ currentUser, setCurrentUser }) =>
         if (data.mainsDate) setMainsDate(new Date(data.mainsDate));
         if (data.dailyGoal) setDailyGoal(data.dailyGoal);
         if (data.weeklyGoal) setWeeklyGoal(data.weeklyGoal);
+        if (data.settings) setSettings(data.settings);
       }
     });
     // Load sessions
@@ -692,7 +696,7 @@ const Dashboard: React.FC<DashboardProps> = ({ currentUser, setCurrentUser }) =>
     return data;
   };
 
-  const getChartData = (): ChartDataPoint[] => {
+  const getChartData = () => {
     switch (chartView) {
       case 'daily':
         return getDailyStudyData();
@@ -702,6 +706,20 @@ const Dashboard: React.FC<DashboardProps> = ({ currentUser, setCurrentUser }) =>
         return getMonthlyStudyData();
       default:
         return getDailyStudyData();
+    }
+  };
+
+  const getTargetValue = (dataPoint: ChartDataPoint) => {
+    const targetHours = settings?.targetHours || 8;
+    switch (chartView) {
+      case 'daily':
+        return targetHours;
+      case 'weekly':
+        return targetHours * 7;
+      case 'monthly':
+        return targetHours * 30;
+      default:
+        return targetHours;
     }
   };
 
@@ -1275,42 +1293,67 @@ const Dashboard: React.FC<DashboardProps> = ({ currentUser, setCurrentUser }) =>
               </Box>
               <Box sx={{ height: 300 }}>
                 <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={getChartData()}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
+                  <AreaChart
+                    data={getChartData()}
+                    margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
+                  >
+                    <defs>
+                      <linearGradient id="colorHours" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#8884d8" stopOpacity={0.8}/>
+                        <stop offset="95%" stopColor="#8884d8" stopOpacity={0}/>
+                      </linearGradient>
+                      <linearGradient id="colorTarget" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#ff7300" stopOpacity={0.8}/>
+                        <stop offset="95%" stopColor="#ff7300" stopOpacity={0}/>
+                      </linearGradient>
+                    </defs>
                     <XAxis 
-                      dataKey={getXAxisKey()} 
-                      stroke="#666"
-                      tick={{ fontSize: 12 }}
-                    />
-                    <YAxis 
-                      stroke="#666"
-                      tick={{ fontSize: 12 }}
-                      label={{ 
-                        value: 'Hours', 
-                        angle: -90, 
-                        position: 'insideLeft',
-                        style: { textAnchor: 'middle', fontSize: 12 }
-                      }}
-                    />
-                    <Tooltip 
-                      formatter={(value: number) => [`${value} hours`, 'Study Time']}
-                      labelFormatter={(label: string) => {
-                        if (chartView === 'weekly') {
-                          const data = getChartData().find((d: ChartDataPoint) => d.week === label);
-                          return data ? `${data.week} - ${data.weekEnd}` : label;
+                      dataKey={chartView === 'daily' ? 'date' : chartView === 'weekly' ? 'week' : 'month'} 
+                      tickFormatter={(value) => {
+                        if (chartView === 'daily') {
+                          return format(new Date(value), 'MMM d');
+                        } else if (chartView === 'weekly') {
+                          return `Week ${value}`;
+                        } else {
+                          return value;
                         }
-                        return label;
                       }}
                     />
-                    <Line 
-                      type="monotone" 
-                      dataKey="hours" 
-                      stroke="#1976d2" 
-                      strokeWidth={2}
-                      dot={{ fill: '#1976d2' }}
-                      activeDot={{ r: 8 }}
+                    <YAxis />
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <Tooltip
+                      formatter={(value: number, name: string) => {
+                        if (name === 'Target') {
+                          return [`${value.toFixed(1)} hours (target)`, 'Target'];
+                        }
+                        return [`${value.toFixed(1)} hours`, 'Study Hours'];
+                      }}
+                      labelFormatter={(label) => {
+                        if (chartView === 'daily') {
+                          return format(new Date(label), 'MMM d, yyyy');
+                        } else if (chartView === 'weekly') {
+                          return `Week ${label}`;
+                        } else {
+                          return label;
+                        }
+                      }}
                     />
-                  </LineChart>
+                    <Area
+                      type="monotone"
+                      dataKey="hours"
+                      stroke="#8884d8"
+                      fillOpacity={1}
+                      fill="url(#colorHours)"
+                    />
+                    <Area
+                      type="monotone"
+                      dataKey={(dataPoint) => getTargetValue(dataPoint)}
+                      stroke="#ff7300"
+                      strokeDasharray="5 5"
+                      fillOpacity={0}
+                      name="Target"
+                    />
+                  </AreaChart>
                 </ResponsiveContainer>
               </Box>
             </CardContent>
